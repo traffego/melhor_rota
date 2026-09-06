@@ -1,0 +1,225 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { Search, MapPin, Navigation, Loader2, X } from "lucide-react";
+import { LocationPoint } from "@/types";
+import { searchAddress, reverseGeocode } from "@/lib/services/photon";
+
+interface AddressAutocompleteProps {
+  label: string;
+  placeholder: string;
+  value: LocationPoint | null;
+  onChange: (loc: LocationPoint | null) => void;
+  showCurrentLocationButton?: boolean;
+}
+
+export function AddressAutocomplete({
+  label,
+  placeholder,
+  value,
+  onChange,
+  showCurrentLocationButton = false,
+}: AddressAutocompleteProps) {
+  const [inputValue, setInputValue] = useState(value?.name || "");
+  const [suggestions, setSuggestions] = useState<LocationPoint[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (value) {
+      setInputValue(value.name);
+    } else {
+      setInputValue("");
+    }
+  }, [value]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const text = e.target.value;
+    setInputValue(text);
+    setSelectedIndex(-1);
+
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    if (text.trim().length < 2) {
+      setSuggestions([]);
+      setIsOpen(false);
+      return;
+    }
+
+    setIsLoading(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await searchAddress(text);
+        setSuggestions(results);
+        setIsOpen(results.length > 0);
+      } catch (err) {
+        console.error("Erro no autocomplete:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 300);
+  };
+
+  const handleSelect = (item: LocationPoint) => {
+    setInputValue(item.name);
+    setIsOpen(false);
+    setSuggestions([]);
+    onChange(item);
+  };
+
+  const handleClear = () => {
+    setInputValue("");
+    setSuggestions([]);
+    setIsOpen(false);
+    onChange(null);
+  };
+
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocalização não é suportada pelo seu navegador.");
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        try {
+          const loc = await reverseGeocode(latitude, longitude);
+          if (loc) {
+            setInputValue(loc.name);
+            onChange(loc);
+          }
+        } catch (err) {
+          console.error("Erro ao obter endereço do local:", err);
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (err) => {
+        console.error("Erro ao obter posição:", err);
+        alert("Não foi possível obter sua localização. Verifique as permissões do navegador.");
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen || suggestions.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
+    } else if (e.key === "Enter" && selectedIndex >= 0) {
+      e.preventDefault();
+      handleSelect(suggestions[selectedIndex]);
+    } else if (e.key === "Escape") {
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+          {label}
+        </label>
+        {showCurrentLocationButton && (
+          <button
+            type="button"
+            onClick={handleGetCurrentLocation}
+            disabled={isLocating}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-full transition-colors border border-emerald-200"
+            title="Usar localização atual do GPS"
+          >
+            {isLocating ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <Navigation className="w-3 h-3" />
+            )}
+            <span>Seu local</span>
+          </button>
+        )}
+      </div>
+
+      <div className="relative flex items-center">
+        <div className="absolute left-3.5 text-slate-400 pointer-events-none">
+          {isLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+          ) : (
+            <Search className="w-4 h-4" />
+          )}
+        </div>
+
+        <input
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          onFocus={() => {
+            if (suggestions.length > 0) setIsOpen(true);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          className="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all shadow-sm"
+        />
+
+        {inputValue && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-3 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* Dropdown de sugestões */}
+      {isOpen && suggestions.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto">
+          {suggestions.map((item, idx) => (
+            <button
+              key={`${item.lat}-${item.lng}-${idx}`}
+              type="button"
+              onClick={() => handleSelect(item)}
+              onMouseEnter={() => setSelectedIndex(idx)}
+              className={`w-full text-left px-3.5 py-2.5 flex items-start gap-2.5 transition-colors border-b border-slate-100 last:border-none ${
+                idx === selectedIndex ? "bg-emerald-50 text-emerald-950" : "hover:bg-slate-50 text-slate-800"
+              }`}
+            >
+              <MapPin className={`w-4 h-4 mt-0.5 shrink-0 ${idx === selectedIndex ? "text-emerald-600" : "text-slate-400"}`} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate leading-tight">{item.name}</p>
+                {(item.city || item.state) && (
+                  <p className="text-xs text-slate-500 mt-0.5 truncate">
+                    {[item.city, item.state].filter(Boolean).join(" - ")}
+                  </p>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
