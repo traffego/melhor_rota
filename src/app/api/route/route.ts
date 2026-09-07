@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { calculateRouteWithOSRM, calculateRouteWithTollGuru, computeTripCosts } from "@/lib/services/routing";
+import { calculateRouteWithHere, calculateRouteWithOSRM, computeTripCosts } from "@/lib/services/routing";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { LocationPoint, Vehicle } from "@/types";
 
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Origem e destino válidos são obrigatórios." }, { status: 400 });
     }
 
-    const tollGuruKey = process.env.TOLLGURU_API_KEY;
+    const hereApiKey = process.env.HERE_API_KEY;
     let routeData: {
       distanceKm: number;
       durationMinutes: number;
@@ -32,11 +32,12 @@ export async function POST(request: NextRequest) {
       totalTollCost: number;
     } | null = null;
 
-    if (tollGuruKey && tollGuruKey.trim().length > 0) {
-      routeData = await calculateRouteWithTollGuru(origin, destination, tollGuruKey);
+    // 1. Tentar cálculo automático com tarifas oficiais em tempo real via HERE API
+    if (hereApiKey && hereApiKey.trim().length > 0) {
+      routeData = await calculateRouteWithHere(origin, destination, hereApiKey.trim());
     }
 
-    // Se TollGuru não estiver configurado ou falhar, usar roteamento OSRM
+    // 2. Fallback gracioso com OSRM + base de praças geolocalizadas
     if (!routeData) {
       routeData = await calculateRouteWithOSRM(origin, destination);
     }
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
         destination_name: destination.name,
         destination_lat: destination.lat,
         destination_lng: destination.lng,
-        vehicle_name: vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.version || ''}`.trim() : "Personalizado",
+        vehicle_name: vehicle ? `${vehicle.brand} ${vehicle.model}` : "Personalizado",
         vehicle_brand: vehicle?.brand || "Personalizado",
         vehicle_model: vehicle?.model || "Personalizado",
         distance_km: tripResult.distanceKm,
@@ -81,7 +82,6 @@ export async function POST(request: NextRequest) {
       });
     } catch (logErr) {
       // Falha não impeditiva
-      console.warn("Log de rota não persistido:", logErr);
     }
 
     return NextResponse.json(tripResult);

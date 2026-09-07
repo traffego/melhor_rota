@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Search, MapPin, Navigation, Loader2, X } from "lucide-react";
+import { Search, MapPin, Navigation, Loader2, X, Building2 } from "lucide-react";
 import { LocationPoint } from "@/types";
 import { searchAddress, reverseGeocode } from "@/lib/services/photon";
 
@@ -73,7 +73,7 @@ export function AddressAutocomplete({
       } finally {
         setIsLoading(false);
       }
-    }, 300);
+    }, 200);
   };
 
   const handleSelect = (item: LocationPoint) => {
@@ -149,7 +149,7 @@ export function AddressAutocomplete({
             type="button"
             onClick={handleGetCurrentLocation}
             disabled={isLocating}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-full transition-colors border border-emerald-200"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-full transition-colors border border-emerald-200"
             title="Usar localização atual do GPS"
           >
             {isLocating ? (
@@ -194,20 +194,33 @@ export function AddressAutocomplete({
         )}
       </div>
 
-      {/* Dropdown de sugestões */}
+      {/* Dropdown de sugestões limitadas ao Brasil */}
       {isOpen && suggestions.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto">
+        <div className="absolute z-50 mt-1.5 w-full bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden max-h-72 overflow-y-auto divide-y divide-slate-100">
+          <div className="px-3.5 py-1.5 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
+            <span>Sugestões no Brasil</span>
+            <span className="text-[10px] text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">
+              {suggestions.length} encontrados
+            </span>
+          </div>
+
           {suggestions.map((item, idx) => (
             <button
               key={`${item.lat}-${item.lng}-${idx}`}
               type="button"
               onClick={() => handleSelect(item)}
               onMouseEnter={() => setSelectedIndex(idx)}
-              className={`w-full text-left px-3.5 py-2.5 flex items-start gap-2.5 transition-colors border-b border-slate-100 last:border-none ${
+              className={`w-full text-left px-3.5 py-2.5 flex items-start gap-2.5 transition-colors ${
                 idx === selectedIndex ? "bg-emerald-50 text-emerald-950" : "hover:bg-slate-50 text-slate-800"
               }`}
             >
-              <MapPin className={`w-4 h-4 mt-0.5 shrink-0 ${idx === selectedIndex ? "text-emerald-600" : "text-slate-400"}`} />
+              <div className="mt-0.5 shrink-0">
+                {item.city && !item.name.includes(",") ? (
+                  <Building2 className={`w-4 h-4 ${idx === selectedIndex ? "text-emerald-600" : "text-slate-400"}`} />
+                ) : (
+                  <MapPin className={`w-4 h-4 ${idx === selectedIndex ? "text-emerald-600" : "text-slate-400"}`} />
+                )}
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate leading-tight">{item.name}</p>
                 {(item.city || item.state) && (

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Car, Fuel, Sliders, Check, Search, ChevronDown } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Car, Search, ChevronDown, Check, Sliders, X, Loader2 } from "lucide-react";
 import { Vehicle } from "@/types";
 import { triggerPixelEvent } from "./PixelTracker";
 
@@ -22,13 +22,16 @@ export function VehicleSelector({
 }: VehicleSelectorProps) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedBrand, setSelectedBrand] = useState<string>("all");
+  const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isManualConsumption, setIsManualConsumption] = useState(false);
   const [manualValue, setManualValue] = useState<string>(customConsumption?.toString() || "");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Carregar lista inicial de veículos populares
   useEffect(() => {
-    async function loadVehicles() {
+    async function loadInitial() {
       try {
         const res = await fetch("/api/vehicles");
         if (res.ok) {
@@ -39,18 +42,42 @@ export function VehicleSelector({
         console.error("Erro ao carregar veículos:", err);
       }
     }
-    loadVehicles();
+    loadInitial();
   }, []);
 
-  const brands = Array.from(new Set(vehicles.map((v) => v.brand))).sort();
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  const filteredVehicles = vehicles.filter((v) => {
-    const matchesBrand = selectedBrand === "all" || v.brand === selectedBrand;
-    const matchesQuery =
-      searchQuery.trim() === "" ||
-      `${v.brand} ${v.model} ${v.version || ""}`.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesBrand && matchesQuery;
-  });
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const text = e.target.value;
+    setSearchQuery(text);
+
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    setIsLoading(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/vehicles?q=${encodeURIComponent(text.trim())}`);
+        if (res.ok) {
+          const data = await res.json();
+          setVehicles(data.vehicles || []);
+        }
+      } catch (err) {
+        console.error("Erro na busca de veículos:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 180);
+  };
 
   const handleSelect = (v: Vehicle) => {
     onSelectVehicle(v);
@@ -58,13 +85,12 @@ export function VehicleSelector({
     setIsManualConsumption(false);
     onChangeCustomConsumption(undefined);
 
-    // Disparar pixel de remarketing com base no carro escolhido!
+    // Disparar pixel com os metadados do veículo selecionado
     triggerPixelEvent("SelectVehicle", {
       vehicle_id: v.id,
       vehicle_brand: v.brand,
       vehicle_model: v.model,
       vehicle_category: v.category || "Carro",
-      vehicle_year: v.year || 2024,
       vehicle_fuel_type: v.fuel_type || "Flex",
     });
   };
@@ -90,7 +116,6 @@ export function VehicleSelector({
     }
   };
 
-  // Obter consumo padrão estimado baseado no combustível selecionado
   const getSelectedVehicleConsumption = () => {
     if (!selectedVehicle) return 12.0;
     if (fuelType === "gasolina") {
@@ -106,15 +131,12 @@ export function VehicleSelector({
   };
 
   return (
-    <div className="w-full space-y-3">
+    <div className="w-full space-y-3" ref={containerRef}>
       <div className="flex items-center justify-between">
         <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
           <Car className="w-4 h-4 text-emerald-600" />
-          <span>Veículo & Consumo Médio</span>
+          <span>Veículo & Consumo</span>
         </label>
-        <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-          Tabela Inmetro PBEV
-        </span>
       </div>
 
       {/* Botão de seleção de veículo */}
@@ -130,105 +152,100 @@ export function VehicleSelector({
             </div>
             <div className="truncate">
               {selectedVehicle ? (
-                <p className="font-bold text-slate-900 truncate">
-                  {selectedVehicle.brand} {selectedVehicle.model}{" "}
-                  <span className="text-xs font-normal text-slate-500">
-                    {selectedVehicle.version ? `(${selectedVehicle.version})` : ""}
-                  </span>
-                </p>
+                <div>
+                  <p className="font-bold text-slate-900 truncate">
+                    {selectedVehicle.brand} {selectedVehicle.model}
+                  </p>
+                  <p className="text-[11px] text-slate-500">{selectedVehicle.fuel_type || "Flex"}</p>
+                </div>
               ) : (
-                <p className="text-slate-500 font-medium">Selecione seu modelo de carro...</p>
+                <p className="text-slate-500 font-medium">Buscar modelo do carro (ex: Prisma, Civic, Onix, Gol)...</p>
               )}
             </div>
           </div>
           <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${isOpen ? "rotate-180" : ""}`} />
         </button>
 
-        {/* Modal/Dropdown de Seleção */}
+        {/* Dropdown de Busca em Tempo Real nos 5.700+ veículos */}
         {isOpen && (
-          <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-3 space-y-2 max-h-96 overflow-hidden flex flex-col">
-            {/* Filtros e Busca */}
-            <div className="space-y-2 shrink-0">
-              <div className="relative flex items-center">
+          <div className="absolute z-50 mt-1.5 w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-3 space-y-2.5 max-h-80 overflow-hidden flex flex-col">
+            {/* Input de Busca */}
+            <div className="relative flex items-center shrink-0">
+              {isLoading ? (
+                <Loader2 className="absolute left-3 w-4 h-4 text-emerald-600 animate-spin" />
+              ) : (
                 <Search className="absolute left-3 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar modelo ou marca (ex: Onix, Polo, Corolla)..."
-                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              {/* Pílulas de Marcas */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              )}
+              <input
+                type="text"
+                autoFocus
+                value={searchQuery}
+                onChange={handleSearchChange}
+                placeholder="Digite modelo e ano (ex: Clio 2008, Prisma 2012, Civic 2015, Onix)..."
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              {searchQuery && (
                 <button
                   type="button"
-                  onClick={() => setSelectedBrand("all")}
-                  className={`text-xs px-2.5 py-1 rounded-full font-medium shrink-0 transition-colors ${
-                    selectedBrand === "all"
-                      ? "bg-emerald-600 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
+                  onClick={() => {
+                    setSearchQuery("");
+                    fetch("/api/vehicles").then((r) => r.json()).then((d) => setVehicles(d.vehicles || []));
+                  }}
+                  className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-600 rounded-full"
                 >
-                  Todas
+                  <X className="w-3.5 h-3.5" />
                 </button>
-                {brands.map((b) => (
-                  <button
-                    key={b}
-                    type="button"
-                    onClick={() => setSelectedBrand(b)}
-                    className={`text-xs px-2.5 py-1 rounded-full font-medium shrink-0 transition-colors ${
-                      selectedBrand === b
-                        ? "bg-emerald-600 text-white"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
-                  >
-                    {b}
-                  </button>
-                ))}
-              </div>
+              )}
             </div>
 
-            {/* Lista de Carros */}
-            <div className="overflow-y-auto flex-1 space-y-1.5 pr-1 divide-y divide-slate-100">
-              {filteredVehicles.length === 0 ? (
-                <p className="text-center text-xs text-slate-500 py-6">Nenhum veículo encontrado.</p>
+            {/* Lista de Resultados */}
+            <div className="overflow-y-auto flex-1 space-y-1 pr-1 divide-y divide-slate-100">
+              {vehicles.length === 0 && !isLoading ? (
+                <p className="text-center py-6 text-xs text-slate-500">Nenhum veículo encontrado para &quot;{searchQuery}&quot;.</p>
               ) : (
-                filteredVehicles.map((v) => {
-                  const isSelected = selectedVehicle?.model === v.model && selectedVehicle?.brand === v.brand;
+                vehicles.map((v) => {
+                  const isSelected = selectedVehicle?.id === v.id || 
+                    (selectedVehicle?.model === v.model && selectedVehicle?.brand === v.brand && selectedVehicle?.year === v.year);
+
                   return (
                     <button
-                      key={`${v.brand}-${v.model}-${v.version || ""}`}
+                      key={`${v.id}-${v.year || ''}`}
                       type="button"
                       onClick={() => handleSelect(v)}
                       className={`w-full text-left p-2.5 rounded-xl flex items-center justify-between transition-colors ${
                         isSelected ? "bg-emerald-50 text-emerald-950" : "hover:bg-slate-50 text-slate-800"
                       }`}
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-slate-900">{v.brand} {v.model}</span>
-                          {v.category && (
-                            <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                              {v.category}
+                      <div className="flex-1 min-w-0 pr-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-sm text-slate-900">
+                            {v.brand} {v.model}
+                          </span>
+                          {v.year && (
+                            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                              {v.year}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-500 truncate">{v.version || "Versão Padrão"} - {v.fuel_type}</p>
-                        <div className="flex items-center gap-3 mt-1 text-[11px] text-slate-600">
+
+                        {/* Dados de Consumo */}
+                        <div className="flex items-center gap-2.5 mt-1 text-[11px] text-slate-500">
                           {v.consumption_highway_gasoline && (
-                            <span>Estrada: <strong>{v.consumption_highway_gasoline} km/l</strong> (Gas)</span>
+                            <span>Estrada: <strong className="text-emerald-700">{v.consumption_highway_gasoline} km/l</strong> (Gas)</span>
                           )}
                           {v.consumption_highway_ethanol && (
-                            <span>| <strong>{v.consumption_highway_ethanol} km/l</strong> (Eta)</span>
+                            <span>| <strong className="text-amber-700">{v.consumption_highway_ethanol} km/l</strong> (Eta)</span>
                           )}
                           {v.consumption_highway_diesel && (
-                            <span>| <strong>{v.consumption_highway_diesel} km/l</strong> (Diesel)</span>
+                            <span>| <strong className="text-blue-700">{v.consumption_highway_diesel} km/l</strong> (Diesel)</span>
+                          )}
+                          {v.consumption_city_gasoline && !v.consumption_highway_gasoline && (
+                            <span>Cidade: <strong className="text-emerald-700">{v.consumption_city_gasoline} km/l</strong></span>
                           )}
                         </div>
                       </div>
-                      {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />}
+
+                      {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
                     </button>
                   );
                 })

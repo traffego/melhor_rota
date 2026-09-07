@@ -11,10 +11,32 @@ export interface PhotonFeature {
     city?: string;
     state?: string;
     country?: string;
+    countrycode?: string;
     postcode?: string;
     district?: string;
     county?: string;
+    type?: string;
   };
+}
+
+const BRAZIL_STATES: Record<string, string> = {
+  "Acre": "AC", "Alagoas": "AL", "Amapá": "AP", "Amazonas": "AM", "Bahia": "BA",
+  "Ceará": "CE", "Distrito Federal": "DF", "Espírito Santo": "ES", "Goiás": "GO",
+  "Maranhão": "MA", "Mato Grosso": "MT", "Mato Grosso do Sul": "MS", "Minas Gerais": "MG",
+  "Pará": "PA", "Paraíba": "PB", "Paraná": "PR", "Pernambuco": "PE", "Piauí": "PI",
+  "Rio de Janeiro": "RJ", "Rio Grande do Norte": "RN", "Rio Grande do Sul": "RS",
+  "Rondônia": "RO", "Roraima": "RR", "Santa Catarina": "SC", "São Paulo": "SP",
+  "Sergipe": "SE", "Tocantins": "TO"
+};
+
+function formatStateUF(stateName?: string): string {
+  if (!stateName) return "";
+  return BRAZIL_STATES[stateName] || stateName;
+}
+
+function isInsideBrazil(lat: number, lng: number): boolean {
+  // Bounding box aproximado do território brasileiro
+  return lat >= -34.0 && lat <= 5.5 && lng >= -74.0 && lng <= -34.5;
 }
 
 export async function searchAddress(query: string): Promise<LocationPoint[]> {
@@ -22,94 +44,158 @@ export async function searchAddress(query: string): Promise<LocationPoint[]> {
     return [];
   }
 
+  const cleanQuery = query.trim();
+
   try {
-    const encoded = encodeURIComponent(query.trim());
-    // Focando a busca com prioridade no Brasil usando bbox ou lat/lon central
-    const url = `https://photon.komoot.io/api/?q=${encoded}&limit=7&lat=-15.7801&lon=-47.9292`;
-    
-    const response = await fetch(url, {
-      headers: {
-        "Accept": "application/json",
-      },
+    const encoded = encodeURIComponent(cleanQuery);
+    // Busca restrita ao Bounding Box do Brasil
+    const photonUrl = `https://photon.komoot.io/api/?q=${encoded}&bbox=-73.99,-33.75,-34.79,5.27&limit=10&lang=default`;
+
+    const response = await fetch(photonUrl, {
+      headers: { "Accept": "application/json" },
     });
 
-    if (!response.ok) {
-      throw new Error(`Photon search error: ${response.statusText}`);
+    let results: LocationPoint[] = [];
+
+    if (response.ok) {
+      const data = await response.json();
+      const features: PhotonFeature[] = data.features || [];
+
+      const rawResults = features
+        .filter((feat) => {
+          const [lng, lat] = feat.geometry.coordinates;
+          const p = feat.properties;
+          const isBrCountry = !p.countrycode || p.countrycode.toUpperCase() === "BR" ||
+                             p.country === "Brasil" || p.country === "Brazil";
+          return isInsideBrazil(lat, lng) && isBrCountry;
+        })
+        .map((feat) => {
+          const [lng, lat] = feat.geometry.coordinates;
+          const p = feat.properties;
+          const uf = formatStateUF(p.state);
+
+          // Formatação limpa para o padrão brasileiro
+          let title = p.name || "";
+          if (p.street && p.street !== title) {
+            title = p.housenumber ? `${p.street}, ${p.housenumber}` : p.street;
+          }
+
+          const secondaryParts: string[] = [];
+          if (p.district) secondaryParts.push(p.district);
+          if (p.city && p.city !== title) secondaryParts.push(p.city);
+          if (uf) secondaryParts.push(uf);
+
+          const fullName = secondaryParts.length > 0 
+            ? `${title} - ${secondaryParts.join(", ")}` 
+            : (uf ? `${title} - ${uf}` : title);
+
+          return {
+            name: fullName,
+            lat,
+            lng,
+            city: p.city || p.county,
+            state: uf || p.state,
+          };
+        });
+
+      // Deduplicar nomes idênticos
+      const seenNames = new Set<string>();
+      for (const item of rawResults) {
+        if (!seenNames.has(item.name)) {
+          seenNames.add(item.name);
+          results.push(item);
+        }
+      }
     }
 
-    const data = await response.json();
-    const features: PhotonFeature[] = data.features || [];
+    // Se Photon retornar poucos resultados, consultar Nominatim com countrycodes=br
+    if (results.length < 3) {
+      try {
+        const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&countrycodes=br&addressdetails=1&limit=6`;
+        const nomRes = await fetch(nomUrl, {
+          headers: { "User-Agent": "MelhorRotaApp/1.0" },
+        });
 
-    return features.map((feat) => {
-      const [lng, lat] = feat.geometry.coordinates;
-      const p = feat.properties;
+        if (nomRes.ok) {
+          const nomData = await nomRes.json();
+          const nomResults: LocationPoint[] = nomData.map((item: any) => {
+            const addr = item.address || {};
+            const state = formatStateUF(addr.state);
+            const city = addr.city || addr.town || addr.municipality || addr.village;
+            const road = addr.road || addr.street;
+            const title = road ? (addr.house_number ? `${road}, ${addr.house_number}` : road) : (item.name || city);
 
-      // Montar nome formatado amigável
-      const parts: string[] = [];
-      if (p.name) parts.push(p.name);
-      if (p.street && p.street !== p.name) parts.push(p.street);
-      if (p.district) parts.push(p.district);
-      if (p.city && p.city !== p.name) parts.push(p.city);
-      if (p.state) parts.push(p.state);
-      if (p.country && p.country !== "Brazil" && p.country !== "Brasil") parts.push(p.country);
+            const details: string[] = [];
+            if (addr.suburb && addr.suburb !== title) details.push(addr.suburb);
+            if (city && city !== title) details.push(city);
+            if (state) details.push(state);
 
-      const fullName = parts.length > 0 ? parts.join(", ") : `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+            const name = details.length > 0 ? `${title} - ${details.join(", ")}` : item.display_name;
 
-      return {
-        name: fullName,
-        lat,
-        lng,
-        city: p.city || p.county,
-        state: p.state,
-      };
-    });
+            return {
+              name,
+              lat: parseFloat(item.lat),
+              lng: parseFloat(item.lon),
+              city,
+              state,
+            };
+          });
+
+          // Unir resultados sem duplicatas de coordenadas próximas
+          for (const nr of nomResults) {
+            const exists = results.some(
+              (r) => Math.abs(r.lat - nr.lat) < 0.001 && Math.abs(r.lng - nr.lng) < 0.001
+            );
+            if (!exists) {
+              results.push(nr);
+            }
+          }
+        }
+      } catch (nomErr) {
+        console.warn("Fallback Nominatim ignorado:", nomErr);
+      }
+    }
+
+    return results;
   } catch (error) {
-    console.error("Erro na busca de endereço Photon:", error);
+    console.error("Erro na busca de endereço Photon/BR:", error);
     return [];
   }
 }
 
 export async function reverseGeocode(lat: number, lng: number): Promise<LocationPoint | null> {
   try {
-    const url = `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`;
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`;
     const response = await fetch(url, {
-      headers: {
-        "Accept": "application/json",
-      },
+      headers: { "User-Agent": "MelhorRotaApp/1.0" },
     });
 
-    if (!response.ok) {
+    if (response.ok) {
+      const data = await response.json();
+      const addr = data.address || {};
+      const state = formatStateUF(addr.state);
+      const city = addr.city || addr.town || addr.municipality || addr.village;
+      const road = addr.road || addr.street;
+
+      const parts: string[] = [];
+      if (road) parts.push(addr.house_number ? `${road}, ${addr.house_number}` : road);
+      if (addr.suburb) parts.push(addr.suburb);
+      if (city) parts.push(city);
+      if (state) parts.push(state);
+
       return {
-        name: `Localização Atual (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+        name: parts.length > 0 ? parts.join(" - ") : "Seu Local",
         lat,
         lng,
+        city,
+        state,
       };
     }
-
-    const data = await response.json();
-    const feat: PhotonFeature | undefined = data.features?.[0];
-
-    if (!feat) {
-      return {
-        name: `Localização Atual (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
-        lat,
-        lng,
-      };
-    }
-
-    const p = feat.properties;
-    const parts: string[] = [];
-    if (p.name) parts.push(p.name);
-    if (p.street && p.street !== p.name) parts.push(p.street);
-    if (p.city) parts.push(p.city);
-    if (p.state) parts.push(p.state);
 
     return {
-      name: parts.length > 0 ? parts.join(", ") : "Seu Local",
+      name: `Localização Atual (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
       lat,
       lng,
-      city: p.city,
-      state: p.state,
     };
   } catch (error) {
     console.error("Erro no geocoding reverso:", error);
