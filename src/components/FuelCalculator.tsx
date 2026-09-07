@@ -109,18 +109,18 @@ export function FuelCalculator({
   const isEthanolAdvantageous = ratio <= 70.0;
 
   return (
-    <div className="w-full space-y-3 bg-slate-50/80 border border-slate-200 p-3.5 rounded-2xl">
+    <div className="w-full space-y-2.5 bg-slate-50/80 border border-slate-200 p-3 rounded-xl">
       <div className="flex items-center justify-between">
-        <label className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-          <Fuel className="w-4 h-4 text-emerald-600" />
-          <span>Combustível & Preço do Litro</span>
+        <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+          <Fuel className="w-3.5 h-3.5 text-slate-500" />
+          <span>Combustível & Preço</span>
         </label>
         
         {/* Seletor de Estado / ANP */}
         <select
           value={selectedUf}
           onChange={(e) => handleUfChange(e.target.value)}
-          className="text-xs font-semibold bg-white border border-slate-300 text-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          className="text-xs font-medium bg-white border border-slate-200 text-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-slate-400"
         >
           {fuelPrices.map((p) => (
             <option key={p.state_uf} value={p.state_uf}>
@@ -131,7 +131,7 @@ export function FuelCalculator({
       </div>
 
       {/* Seletor Tipo de Combustível */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-1.5 p-0.5 bg-slate-200/60 rounded-lg border border-slate-200/80">
         {(['gasolina', 'etanol', 'diesel'] as const).map((type) => {
           const isActive = fuelType === type;
           return (
@@ -139,10 +139,10 @@ export function FuelCalculator({
               key={type}
               type="button"
               onClick={() => handleTypeChange(type)}
-              className={`py-2 px-3 rounded-xl text-xs font-bold capitalize transition-all border ${
+              className={`py-1.5 px-2 rounded-md text-xs font-semibold capitalize transition-all ${
                 isActive
-                  ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                  : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
               {type}
@@ -152,12 +152,12 @@ export function FuelCalculator({
       </div>
 
       {/* Input de Preço por Litro Customizável */}
-      <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-slate-200">
-        <span className="text-xs font-semibold text-slate-600">
+      <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200">
+        <span className="text-xs text-slate-600">
           Preço do litro ({fuelType}):
         </span>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-bold text-slate-500">R$</span>
+        <div className="flex items-center gap-1">
+          <span className="text-xs font-medium text-slate-400">R$</span>
           <input
             type="number"
             step="0.01"
@@ -165,7 +165,7 @@ export function FuelCalculator({
             max="25.00"
             value={fuelPrice || ""}
             onChange={(e) => onChangeFuelPrice(parseFloat(e.target.value) || 0)}
-            className="w-20 px-2 py-1 bg-slate-50 border border-slate-300 rounded-lg text-sm font-bold text-slate-900 text-right focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="w-16 px-1.5 py-0.5 bg-slate-50 border border-slate-200 rounded text-xs font-bold text-slate-900 text-right focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-400"
           />
         </div>
       </div>
