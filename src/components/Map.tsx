@@ -89,7 +89,7 @@ export default function Map({ origin, destination, routeResult }: MapProps) {
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const polylineLayerRef = useRef<L.Polyline | null>(null);
-  const [mapStyle, setMapStyle] = useState<MapStyle>("mono");
+  const [mapStyle, setMapStyle] = useState<MapStyle>("standard");
 
   // Inicializar o Mapa Leaflet
   useEffect(() => {
@@ -104,8 +104,8 @@ export default function Map({ origin, destination, routeResult }: MapProps) {
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
-    // Camada padrão Preto e Branco (OpenStreetMap filtrado)
-    const initialConfig = TILE_LAYERS.mono;
+    // Camada padrão Colorida (OpenStreetMap)
+    const initialConfig = TILE_LAYERS.standard;
     const tileLayer = L.tileLayer(initialConfig.url, {
       attribution: initialConfig.attribution,
       maxZoom: initialConfig.maxZoom,
