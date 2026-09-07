@@ -165,7 +165,7 @@ export async function searchAddress(query: string): Promise<LocationPoint[]> {
 
 export async function reverseGeocode(lat: number, lng: number): Promise<LocationPoint | null> {
   try {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`;
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
     const response = await fetch(url, {
       headers: { "User-Agent": "MelhorRotaApp/1.0" },
     });
@@ -176,15 +176,24 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Location
       const state = formatStateUF(addr.state);
       const city = addr.city || addr.town || addr.municipality || addr.village;
       const road = addr.road || addr.street;
+      const houseNumber = addr.house_number;
+      const suburb = addr.suburb || addr.neighbourhood || addr.city_district;
+
+      let streetPart = "";
+      if (road) {
+        streetPart = houseNumber ? `${road}, ${houseNumber}` : road;
+      }
 
       const parts: string[] = [];
-      if (road) parts.push(addr.house_number ? `${road}, ${addr.house_number}` : road);
-      if (addr.suburb) parts.push(addr.suburb);
+      if (streetPart) parts.push(streetPart);
+      if (suburb && suburb !== streetPart && suburb !== city) parts.push(suburb);
       if (city) parts.push(city);
       if (state) parts.push(state);
 
+      const formattedName = parts.length > 0 ? parts.join(" - ") : (data.display_name || "Seu Local");
+
       return {
-        name: parts.length > 0 ? parts.join(" - ") : "Seu Local",
+        name: formattedName,
         lat,
         lng,
         city,

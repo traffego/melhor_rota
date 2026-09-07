@@ -126,6 +126,20 @@ export function AddressAutocomplete({
       return false;
     };
 
+    const processCoords = async (latitude: number, longitude: number) => {
+      try {
+        const loc = await reverseGeocode(latitude, longitude);
+        if (loc) {
+          setInputValue(loc.name);
+          onChange(loc);
+          return true;
+        }
+      } catch (err) {
+        console.error("Erro ao obter endereço do local:", err);
+      }
+      return false;
+    };
+
     if (!navigator.geolocation) {
       const ok = await fallbackIPLocation();
       if (!ok) {
@@ -135,33 +149,36 @@ export function AddressAutocomplete({
       return;
     }
 
+    // 1. Tentar GPS de Alta Precisão (hardware/satélite/Wi-Fi detalhado)
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
-        try {
-          const loc = await reverseGeocode(latitude, longitude);
-          if (loc) {
-            setInputValue(loc.name);
-            onChange(loc);
-          } else {
-            await fallbackIPLocation();
-          }
-        } catch (err) {
-          console.error("Erro ao obter endereço do local:", err);
-          await fallbackIPLocation();
-        } finally {
-          setIsLocating(false);
-        }
-      },
-      async (err) => {
-        console.warn("GPS indisponivel, usar IP:", err.message);
-        const ok = await fallbackIPLocation();
-        if (!ok) {
-          alert("Não foi possível obter sua localização. Verifique as permissões do navegador.");
-        }
+        const ok = await processCoords(latitude, longitude);
+        if (!ok) await fallbackIPLocation();
         setIsLocating(false);
       },
-      { enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 }
+      (highAccErr) => {
+        console.warn("GPS alta precisão falhou, tentando triangulação de rede:", highAccErr.message);
+        // 2. Tentar modo padrão (triangulação de rede rápida)
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            const { latitude, longitude } = pos.coords;
+            const ok = await processCoords(latitude, longitude);
+            if (!ok) await fallbackIPLocation();
+            setIsLocating(false);
+          },
+          async (stdErr) => {
+            console.warn("GPS padrão falhou, tentando localização por IP:", stdErr.message);
+            const ok = await fallbackIPLocation();
+            if (!ok) {
+              alert("Não foi possível obter sua localização. Verifique as permissões do navegador.");
+            }
+            setIsLocating(false);
+          },
+          { enableHighAccuracy: false, timeout: 6000, maximumAge: 30000 }
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
