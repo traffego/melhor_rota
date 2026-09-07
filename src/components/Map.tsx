@@ -118,6 +118,43 @@ export default function Map({ origin, destination, routeResult }: MapProps) {
     markersLayerRef.current = markersGroup;
     mapInstanceRef.current = map;
 
+    // Focar no estado/cidade do usuário no estado zero
+    if (!origin && !destination && !routeResult) {
+      if (typeof window !== "undefined" && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            if (!origin && !destination && !routeResult && mapInstanceRef.current) {
+              mapInstanceRef.current.setView([pos.coords.latitude, pos.coords.longitude], 10, { animate: true });
+            }
+          },
+          async () => {
+            // Fallback por IP caso o usuário não conceda GPS
+            try {
+              const res = await fetch("/api/geolocation");
+              if (res.ok) {
+                const data = await res.json();
+                if (data.lat && data.lng && !origin && !destination && !routeResult && mapInstanceRef.current) {
+                  mapInstanceRef.current.setView([data.lat, data.lng], 9, { animate: true });
+                }
+              }
+            } catch (e) {
+              console.error("Erro ao obter geolocalização inicial:", e);
+            }
+          },
+          { timeout: 5000, maximumAge: 300000 }
+        );
+      } else {
+        fetch("/api/geolocation")
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.lat && data.lng && !origin && !destination && !routeResult && mapInstanceRef.current) {
+              mapInstanceRef.current.setView([data.lat, data.lng], 9, { animate: true });
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
     // Garantir renderização correta ao redimensionar tela
     const resizeObserver = new ResizeObserver(() => {
       map.invalidateSize();
