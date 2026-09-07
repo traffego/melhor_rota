@@ -45,9 +45,24 @@ export async function searchAddress(query: string): Promise<LocationPoint[]> {
   }
 
   const cleanQuery = query.trim();
+  const encoded = encodeURIComponent(cleanQuery);
+
+  // 1. Tentar API interna de busca de POIs e Lugares (HERE Places / Discover)
+  if (typeof window !== "undefined") {
+    try {
+      const placesRes = await fetch(`/api/places/search?q=${encoded}`);
+      if (placesRes.ok) {
+        const placesData = await placesRes.json();
+        if (placesData?.results && placesData.results.length > 0) {
+          return placesData.results;
+        }
+      }
+    } catch (placesErr) {
+      console.warn("API de lugares falhou, usando fallback:", placesErr);
+    }
+  }
 
   try {
-    const encoded = encodeURIComponent(cleanQuery);
     // Busca restrita ao Bounding Box do Brasil
     const photonUrl = `https://photon.komoot.io/api/?q=${encoded}&bbox=-73.99,-33.75,-34.79,5.27&limit=10&lang=default`;
 
