@@ -136,21 +136,23 @@ export function RouteCalculator({
   };
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-      {/* Cabeçalho Limpo */}
-      <div className="pb-3 mb-3 border-b border-slate-100 shrink-0">
-        <h1 className="text-base font-bold text-slate-900 tracking-tight">
-          Planejamento de Rota
-        </h1>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Estimativa de combustível e praças de pedágios
-        </p>
+    <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+      {/* Cabeçalho Compacto */}
+      <div className="pb-2 mb-2 border-b border-slate-100 shrink-0 flex items-center justify-between">
+        <div>
+          <h1 className="text-sm font-bold text-slate-900 tracking-tight leading-none">
+            Planejamento de Rota
+          </h1>
+          <p className="text-[10px] text-slate-500 mt-0.5 leading-none">
+            Combustível e pedágios automáticos
+          </p>
+        </div>
       </div>
 
       {/* Conteúdo com Scroll Suave Interno */}
-      <div className="flex-1 overflow-y-auto pr-1 space-y-3 scrollbar-thin scrollbar-thumb-slate-200">
+      <div className="flex-1 overflow-y-auto pr-1 space-y-2 scrollbar-thin scrollbar-thumb-slate-200">
         {/* Inputs de Origem e Destino com botão de inverter */}
-        <div className="space-y-2 relative">
+        <div className="space-y-1 relative">
           <AddressAutocomplete
             label="Origem"
             placeholder="Ponto de partida..."
@@ -159,14 +161,14 @@ export function RouteCalculator({
             showCurrentLocationButton={true}
           />
 
-          <div className="flex justify-center -my-2 relative z-10">
+          <div className="flex justify-center -my-1.5 relative z-10">
             <button
               type="button"
               onClick={handleSwapPoints}
-              className="p-1 bg-white hover:bg-slate-50 text-slate-400 hover:text-slate-700 rounded-full border border-slate-200 shadow-sm transition-transform hover:rotate-180"
+              className="p-0.5 bg-white hover:bg-slate-50 text-slate-400 hover:text-slate-700 rounded-full border border-slate-200 shadow-sm transition-transform hover:rotate-180"
               title="Inverter origem e destino"
             >
-              <ArrowUpDown className="w-3 h-3" />
+              <ArrowUpDown className="w-2.5 h-2.5" />
             </button>
           </div>
 
@@ -199,9 +201,9 @@ export function RouteCalculator({
 
         {/* Mensagem de Erro */}
         {errorMessage && (
-          <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-xs text-amber-900">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-            <span className="font-medium">{errorMessage}</span>
+          <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-1.5 text-xs text-amber-900">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span className="font-medium text-[11px]">{errorMessage}</span>
           </div>
         )}
 
@@ -210,16 +212,16 @@ export function RouteCalculator({
           type="button"
           onClick={handleCalculateRoute}
           disabled={isLoading || !origin || !destination || (!vehicle && !customConsumption)}
-          className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-[0.99]"
+          className="w-full h-8 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-[0.99]"
         >
           {isLoading ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin text-white" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
               <span>Calculando rota...</span>
             </>
           ) : (
             <>
-              <Navigation className="w-3.5 h-3.5" />
+              <Navigation className="w-3 h-3" />
               <span>Calcular Rota & Custos</span>
             </>
           )}
@@ -227,7 +229,7 @@ export function RouteCalculator({
 
         {/* Exibição do Resumo quando a rota estiver calculada */}
         {routeResult && (
-          <div className="pt-2 border-t border-slate-200">
+          <div className="pt-1.5 border-t border-slate-200">
             <RouteSummary
               result={routeResult}
               isRoundTrip={isRoundTrip}

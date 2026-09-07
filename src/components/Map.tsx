@@ -164,9 +164,15 @@ export default function Map({ origin, destination, routeResult }: MapProps) {
       routeResult.geometry.forEach((coord) => bounds.extend(coord));
     }
 
-    // Ajustar zoom para caber todos os pontos
+    // Ajustar zoom para caber todos os pontos mantendo nível acima da rua
     if (bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+      if (origin && !destination && !routeResult) {
+        map.setView([origin.lat, origin.lng], 14);
+      } else if (!origin && destination && !routeResult) {
+        map.setView([destination.lat, destination.lng], 14);
+      } else {
+        map.fitBounds(bounds, { padding: [45, 45], maxZoom: 14 });
+      }
     }
   }, [origin, destination, routeResult]);
 
