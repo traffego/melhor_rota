@@ -84,7 +84,16 @@ export default function Map({ origin, destination, routeResult }: MapProps) {
     markersLayerRef.current = markersGroup;
     mapInstanceRef.current = map;
 
+    // Garantir renderização correta ao redimensionar tela
+    const resizeObserver = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    if (mapContainerRef.current) {
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
     return () => {
+      resizeObserver.disconnect();
       map.remove();
       mapInstanceRef.current = null;
     };

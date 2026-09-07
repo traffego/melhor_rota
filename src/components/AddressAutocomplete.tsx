@@ -90,13 +90,51 @@ export function AddressAutocomplete({
     onChange(null);
   };
 
-  const handleGetCurrentLocation = () => {
+  const handleGetCurrentLocation = async () => {
+    setIsLocating(true);
+
+    const fallbackIPLocation = async () => {
+      try {
+        const res = await fetch("https://get.geojs.io/v1/ip/geo.json");
+        if (res.ok) {
+          const data = await res.json();
+          const lat = parseFloat(data.latitude);
+          const lng = parseFloat(data.longitude);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            const loc = await reverseGeocode(lat, lng);
+            if (loc) {
+              setInputValue(loc.name);
+              onChange(loc);
+              return true;
+            } else if (data.city) {
+              const fallbackLoc: LocationPoint = {
+                name: `${data.city}${data.region ? ` - ${data.region}` : ""}`,
+                lat,
+                lng,
+                city: data.city,
+                state: data.region,
+              };
+              setInputValue(fallbackLoc.name);
+              onChange(fallbackLoc);
+              return true;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Erro fallback IP:", err);
+      }
+      return false;
+    };
+
     if (!navigator.geolocation) {
-      alert("Geolocalização não é suportada pelo seu navegador.");
+      const ok = await fallbackIPLocation();
+      if (!ok) {
+        alert("Não foi possível obter sua localização.");
+      }
+      setIsLocating(false);
       return;
     }
 
-    setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
@@ -105,19 +143,25 @@ export function AddressAutocomplete({
           if (loc) {
             setInputValue(loc.name);
             onChange(loc);
+          } else {
+            await fallbackIPLocation();
           }
         } catch (err) {
           console.error("Erro ao obter endereço do local:", err);
+          await fallbackIPLocation();
         } finally {
           setIsLocating(false);
         }
       },
-      (err) => {
-        console.error("Erro ao obter posição:", err);
-        alert("Não foi possível obter sua localização. Verifique as permissões do navegador.");
+      async (err) => {
+        console.warn("GPS indisponivel, usar IP:", err.message);
+        const ok = await fallbackIPLocation();
+        if (!ok) {
+          alert("Não foi possível obter sua localização. Verifique as permissões do navegador.");
+        }
         setIsLocating(false);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 }
     );
   };
 

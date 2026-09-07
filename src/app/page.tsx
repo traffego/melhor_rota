@@ -11,10 +11,10 @@ export default function HomePage() {
   const [routeResult, setRouteResult] = useState<RouteResult | null>(null);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-        {/* Coluna Esquerda: Formulário de Cálculo e Resumo Financeiro */}
-        <div className="lg:col-span-5 xl:col-span-5 order-2 lg:order-1">
+    <div className="w-full max-w-[1920px] mx-auto p-3 sm:p-4 lg:h-[calc(100vh-4.1rem)]">
+      <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 h-full items-stretch">
+        {/* Sidebar Esquerda: Formulário Compacto + Resumo Financeiro */}
+        <aside className="w-full lg:w-[420px] xl:w-[460px] shrink-0 lg:h-full flex flex-col">
           <RouteCalculator
             origin={origin}
             setOrigin={setOrigin}
@@ -23,16 +23,16 @@ export default function HomePage() {
             routeResult={routeResult}
             setRouteResult={setRouteResult}
           />
-        </div>
+        </aside>
 
-        {/* Coluna Direita: Mapa Interativo Leaflet com Marcadores e Rota */}
-        <div className="lg:col-span-7 xl:col-span-7 order-1 lg:order-2 lg:sticky lg:top-24 h-[420px] sm:h-[500px] lg:h-[calc(100vh-8rem)]">
+        {/* Mapa Protagonista: Ocupa todo o espaço restante */}
+        <main className="flex-1 w-full h-[450px] sm:h-[520px] lg:h-full min-h-[400px]">
           <DynamicMap
             origin={origin}
             destination={destination}
             routeResult={routeResult}
           />
-        </div>
+        </main>
       </div>
     </div>
   );

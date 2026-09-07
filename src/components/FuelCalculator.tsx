@@ -13,6 +13,24 @@ interface FuelCalculatorProps {
   onChangeEthanolPrice: (price: number) => void;
 }
 
+const STATE_NAME_TO_UF: Record<string, string> = {
+  "acre": "AC", "alagoas": "AL", "amapá": "AP", "amapa": "AP", "amazonas": "AM", "bahia": "BA",
+  "ceará": "CE", "ceara": "CE", "distrito federal": "DF", "espírito santo": "ES", "espirito santo": "ES",
+  "goiás": "GO", "goias": "GO", "maranhão": "MA", "maranhao": "MA", "mato grosso": "MT",
+  "mato grosso do sul": "MS", "minas gerais": "MG", "pará": "PA", "para": "PA", "paraíba": "PB",
+  "paraiba": "PB", "paraná": "PR", "parana": "PR", "pernambuco": "PE", "piauí": "PI",
+  "piaui": "PI", "rio de janeiro": "RJ", "rio grande do norte": "RN", "rio grande do sul": "RS",
+  "rondônia": "RO", "rondonia": "RO", "roraima": "RR", "santa catarina": "SC", "são paulo": "SP",
+  "sao paulo": "SP", "sergipe": "SE", "tocantins": "TO"
+};
+
+function parseToUF(input?: string): string {
+  if (!input) return "";
+  const clean = input.trim().toLowerCase();
+  if (clean.length === 2) return clean.toUpperCase();
+  return STATE_NAME_TO_UF[clean] || "";
+}
+
 export function FuelCalculator({
   fuelType,
   onChangeFuelType,
@@ -25,27 +43,42 @@ export function FuelCalculator({
   const [selectedUf, setSelectedUf] = useState<string>("BR");
 
   useEffect(() => {
-    async function loadPrices() {
+    async function loadPricesAndDetectUf() {
       try {
         const res = await fetch("/api/fuel-prices");
+        let list: FuelPrice[] = [];
         if (res.ok) {
           const data = await res.json();
-          const list: FuelPrice[] = data.prices || [];
+          list = data.prices || [];
           setFuelPrices(list);
+        }
 
-          const defaultPrice = list.find((p) => p.state_uf === "BR") || list[0];
-          if (defaultPrice) {
-            if (fuelType === "gasolina") onChangeFuelPrice(defaultPrice.gasoline_avg);
-            if (fuelType === "etanol") onChangeFuelPrice(defaultPrice.ethanol_avg);
-            if (fuelType === "diesel") onChangeFuelPrice(defaultPrice.diesel_avg);
-            onChangeEthanolPrice(defaultPrice.ethanol_avg);
+        let detectedUf = "";
+        try {
+          const geoRes = await fetch("https://get.geojs.io/v1/ip/geo.json");
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            detectedUf = parseToUF(geoData.region) || parseToUF(geoData.region_code);
           }
+        } catch (e) {
+          console.warn("Geolocalização IP silenciosa falhou:", e);
+        }
+
+        const targetUf = (detectedUf && list.some((p) => p.state_uf === detectedUf)) ? detectedUf : "BR";
+        setSelectedUf(targetUf);
+
+        const targetPrice = list.find((p) => p.state_uf === targetUf) || list.find((p) => p.state_uf === "BR") || list[0];
+        if (targetPrice) {
+          if (fuelType === "gasolina") onChangeFuelPrice(targetPrice.gasoline_avg);
+          if (fuelType === "etanol") onChangeFuelPrice(targetPrice.ethanol_avg);
+          if (fuelType === "diesel") onChangeFuelPrice(targetPrice.diesel_avg);
+          onChangeEthanolPrice(targetPrice.ethanol_avg);
         }
       } catch (err) {
         console.error("Erro ao carregar preços:", err);
       }
     }
-    loadPrices();
+    loadPricesAndDetectUf();
   }, []);
 
   const handleUfChange = (uf: string) => {

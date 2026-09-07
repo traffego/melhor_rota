@@ -131,102 +131,109 @@ export function RouteCalculator({
   };
 
   return (
-    <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-xl border border-slate-200/80 space-y-5">
-      <div className="space-y-1">
-        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-          Cálculo Inteligente de Viagem
+    <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 shadow-xl border border-slate-200/80 flex flex-col h-full overflow-hidden">
+      {/* Cabeçalho Compacto */}
+      <div className="pb-2.5 mb-2.5 border-b border-slate-100 shrink-0">
+        <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight flex items-center justify-between">
+          <span>Cálculo de Viagem</span>
+          <span className="text-[10px] uppercase font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+            Tempo Real
+          </span>
         </h1>
-        <p className="text-xs text-slate-500">
-          Calcule consumo de combustível, pedágios atualizados e custo total da sua rota.
+        <p className="text-[11px] text-slate-500 mt-0.5">
+          Combustível, pedágios atualizados e consumo por modelo.
         </p>
       </div>
 
-      {/* Inputs de Origem e Destino com botão de inverter */}
-      <div className="space-y-3 relative">
-        <AddressAutocomplete
-          label="De onde você vai sair?"
-          placeholder="Digite endereço, cidade ou ponto de partida..."
-          value={origin}
-          onChange={setOrigin}
-          showCurrentLocationButton={true}
-        />
+      {/* Conteúdo com Scroll Suave Interno */}
+      <div className="flex-1 overflow-y-auto pr-1 space-y-3 scrollbar-thin scrollbar-thumb-slate-200">
+        {/* Inputs de Origem e Destino com botão de inverter */}
+        <div className="space-y-2 relative">
+          <AddressAutocomplete
+            label="Origem"
+            placeholder="Digite ponto de partida..."
+            value={origin}
+            onChange={setOrigin}
+            showCurrentLocationButton={true}
+          />
 
-        <div className="flex justify-center -my-2 relative z-10">
-          <button
-            type="button"
-            onClick={handleSwapPoints}
-            className="p-1.5 bg-white hover:bg-slate-100 text-slate-500 hover:text-emerald-600 rounded-full border border-slate-300 shadow-sm transition-transform hover:rotate-180"
-            title="Inverter origem e destino"
-          >
-            <ArrowUpDown className="w-3.5 h-3.5" />
-          </button>
-        </div>
+          <div className="flex justify-center -my-2 relative z-10">
+            <button
+              type="button"
+              onClick={handleSwapPoints}
+              className="p-1 bg-white hover:bg-slate-100 text-slate-500 hover:text-emerald-600 rounded-full border border-slate-300 shadow-sm transition-transform hover:rotate-180"
+              title="Inverter origem e destino"
+            >
+              <ArrowUpDown className="w-3 h-3" />
+            </button>
+          </div>
 
-        <AddressAutocomplete
-          label="Para onde você está indo?"
-          placeholder="Digite o destino final..."
-          value={destination}
-          onChange={setDestination}
-        />
-      </div>
-
-      {/* Seletor de Veículo Inmetro */}
-      <VehicleSelector
-        selectedVehicle={vehicle}
-        onSelectVehicle={setVehicle}
-        customConsumption={customConsumption}
-        onChangeCustomConsumption={setCustomConsumption}
-        fuelType={fuelType}
-      />
-
-      {/* Calculadora de Combustível & Preço */}
-      <FuelCalculator
-        fuelType={fuelType}
-        onChangeFuelType={setFuelType}
-        fuelPrice={fuelPrice}
-        onChangeFuelPrice={setFuelPrice}
-        ethanolPrice={ethanolPrice}
-        onChangeEthanolPrice={setEthanolPrice}
-      />
-
-      {/* Mensagem de Erro */}
-      {errorMessage && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-800">
-          <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
-          <span className="font-medium">{errorMessage}</span>
-        </div>
-      )}
-
-      {/* Botão de Ação Principal */}
-      <button
-        type="button"
-        onClick={handleCalculateRoute}
-        disabled={isLoading || !origin || !destination}
-        className="w-full py-3.5 px-6 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-sm rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98]"
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span>Calculando melhor trajeto e pedágios...</span>
-          </>
-        ) : (
-          <>
-            <Sparkles className="w-5 h-5 text-emerald-200" />
-            <span>Calcular Rota & Custos</span>
-          </>
-        )}
-      </button>
-
-      {/* Exibição do Resumo quando a rota estiver calculada */}
-      {routeResult && (
-        <div className="pt-2 border-t border-slate-200">
-          <RouteSummary
-            result={routeResult}
-            isRoundTrip={isRoundTrip}
-            onToggleRoundTrip={handleToggleRoundTrip}
+          <AddressAutocomplete
+            label="Destino"
+            placeholder="Digite destino final..."
+            value={destination}
+            onChange={setDestination}
           />
         </div>
-      )}
+
+        {/* Seletor de Veículo Inmetro */}
+        <VehicleSelector
+          selectedVehicle={vehicle}
+          onSelectVehicle={setVehicle}
+          customConsumption={customConsumption}
+          onChangeCustomConsumption={setCustomConsumption}
+          fuelType={fuelType}
+        />
+
+        {/* Calculadora de Combustível & Preço */}
+        <FuelCalculator
+          fuelType={fuelType}
+          onChangeFuelType={setFuelType}
+          fuelPrice={fuelPrice}
+          onChangeFuelPrice={setFuelPrice}
+          ethanolPrice={ethanolPrice}
+          onChangeEthanolPrice={setEthanolPrice}
+        />
+
+        {/* Mensagem de Erro */}
+        {errorMessage && (
+          <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-800">
+            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+            <span className="font-medium">{errorMessage}</span>
+          </div>
+        )}
+
+        {/* Botão de Ação Principal */}
+        <button
+          type="button"
+          onClick={handleCalculateRoute}
+          disabled={isLoading || !origin || !destination}
+          className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs sm:text-sm rounded-xl shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98]"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Calculando rota e pedágios...</span>
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4 text-emerald-200" />
+              <span>Calcular Rota & Custos</span>
+            </>
+          )}
+        </button>
+
+        {/* Exibição do Resumo quando a rota estiver calculada */}
+        {routeResult && (
+          <div className="pt-2 border-t border-slate-200">
+            <RouteSummary
+              result={routeResult}
+              isRoundTrip={isRoundTrip}
+              onToggleRoundTrip={handleToggleRoundTrip}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
