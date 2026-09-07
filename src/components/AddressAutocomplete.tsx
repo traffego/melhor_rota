@@ -14,9 +14,6 @@ interface AddressAutocompleteProps {
   showLocationButtonInside?: boolean;
 }
 
-// Cache em memória para resposta instantânea (< 10ms)
-let inMemoryLocationCache: LocationPoint | null = null;
-
 export function AddressAutocomplete({
   label,
   placeholder,
@@ -33,20 +30,6 @@ export function AddressAutocomplete({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Pré-aquecimento silencioso da localização em background ao carregar a página
-  useEffect(() => {
-    if (!inMemoryLocationCache && typeof window !== "undefined") {
-      fetch("/api/geolocation")
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (data?.lat && data?.lng) {
-            inMemoryLocationCache = data;
-          }
-        })
-        .catch(() => {});
-    }
-  }, []);
 
   useEffect(() => {
     if (value) {
@@ -112,32 +95,10 @@ export function AddressAutocomplete({
   const handleGetCurrentLocation = async () => {
     setIsLocating(true);
 
-    // 1. FAST PATH: Se já temos em cache na memória, aplicar instantaneamente (< 10ms)!
-    if (inMemoryLocationCache) {
-      setInputValue(inMemoryLocationCache.name);
-      onChange(inMemoryLocationCache);
-      setIsLocating(false);
-    }
-
-    const fetchEdgeGeo = async () => {
-      try {
-        const res = await fetch("/api/geolocation");
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.lat && data?.lng) {
-            inMemoryLocationCache = data;
-            return data;
-          }
-        }
-      } catch {}
-      return null;
-    };
-
     const processCoords = async (latitude: number, longitude: number) => {
       try {
         const loc = await reverseGeocode(latitude, longitude);
-        if (loc) {
-          inMemoryLocationCache = loc;
+        if (loc && loc.name) {
           setInputValue(loc.name);
           onChange(loc);
           return true;
@@ -148,37 +109,70 @@ export function AddressAutocomplete({
       return false;
     };
 
-    if (!navigator.geolocation) {
-      const edge = await fetchEdgeGeo();
-      if (edge) {
-        setInputValue(edge.name);
-        onChange(edge);
+    const fallbackIPLocation = async () => {
+      try {
+        const res = await fetch("https://get.geojs.io/v1/ip/geo.json");
+        if (res.ok) {
+          const data = await res.json();
+          const lat = parseFloat(data.latitude);
+          const lng = parseFloat(data.longitude);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            const ok = await processCoords(lat, lng);
+            if (!ok && data.city) {
+              const fallbackLoc: LocationPoint = {
+                name: `${data.city}${data.region ? ` - ${data.region}` : ""}`,
+                lat,
+                lng,
+                city: data.city,
+                state: data.region,
+              };
+              setInputValue(fallbackLoc.name);
+              onChange(fallbackLoc);
+              return true;
+            }
+            return ok;
+          }
+        }
+      } catch (err) {
+        console.error("Erro fallback IP:", err);
       }
+      return false;
+    };
+
+    if (!navigator.geolocation) {
+      await fallbackIPLocation();
       setIsLocating(false);
       return;
     }
 
-    // 2. GPS com timeout curto (1500ms) e cache de 5 minutos
+    // 1. Tentar GPS nativo (Hardware / Wi-Fi) com HERE Reverse Geocoding
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
-        await processCoords(latitude, longitude);
+        const ok = await processCoords(latitude, longitude);
+        if (!ok) await fallbackIPLocation();
         setIsLocating(false);
       },
-      async () => {
-        // Fallback rápido se o GPS demorar
-        if (!inMemoryLocationCache) {
-          const edge = await fetchEdgeGeo();
-          if (edge) {
-            setInputValue(edge.name);
-            onChange(edge);
-          } else {
-            alert("Não foi possível obter sua localização.");
-          }
-        }
-        setIsLocating(false);
+      async (err) => {
+        console.warn("GPS alta precisão falhou, tentando modo de rede:", err.message);
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            const { latitude, longitude } = pos.coords;
+            const ok = await processCoords(latitude, longitude);
+            if (!ok) await fallbackIPLocation();
+            setIsLocating(false);
+          },
+          async () => {
+            const ok = await fallbackIPLocation();
+            if (!ok) {
+              alert("Não foi possível obter sua localização. Por favor, digite seu endereço.");
+            }
+            setIsLocating(false);
+          },
+          { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 }
+        );
       },
-      { enableHighAccuracy: false, timeout: 1500, maximumAge: 300000 }
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 30000 }
     );
   };
 
