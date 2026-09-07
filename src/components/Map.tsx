@@ -15,19 +15,17 @@ interface MapProps {
 
 export type MapStyle = "mono" | "standard" | "satellite" | "dark";
 
-const HERE_KEY = process.env.NEXT_PUBLIC_HERE_API_KEY || "yAgsx1X5FBpSQ_0VF1BvY2cDaGjN-c1lDqSkcO_R_8w";
-
 const TILE_LAYERS: Record<MapStyle, { url: string; attribution: string; maxZoom: number; className?: string }> = {
   mono: {
-    url: `https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/png8?style=lite.day&apiKey=${HERE_KEY}`,
-    attribution: '&copy; <a href="https://legal.here.com">HERE Maps</a>',
-    maxZoom: 20,
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
     className: "map-tiles-mono",
   },
   standard: {
-    url: `https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/png8?style=lite.day&apiKey=${HERE_KEY}`,
-    attribution: '&copy; <a href="https://legal.here.com">HERE Maps</a>',
-    maxZoom: 20,
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
   },
   satellite: {
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -35,9 +33,10 @@ const TILE_LAYERS: Record<MapStyle, { url: string; attribution: string; maxZoom:
     maxZoom: 19,
   },
   dark: {
-    url: `https://maps.hereapi.com/v3/base/mc/{z}/{x}/{y}/png8?style=lite.night&apiKey=${HERE_KEY}`,
-    attribution: '&copy; <a href="https://legal.here.com">HERE Maps</a>',
-    maxZoom: 20,
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+    className: "map-tiles-dark",
   },
 };
 
