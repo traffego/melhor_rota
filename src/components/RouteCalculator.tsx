@@ -10,7 +10,6 @@ import {
   AlertTriangle 
 } from "lucide-react";
 import { LocationPoint, RouteResult, Vehicle } from "@/types";
-import { reverseGeocode } from "@/lib/services/photon";
 import { AddressAutocomplete } from "./AddressAutocomplete";
 import { VehicleSelector } from "./VehicleSelector";
 import { FuelCalculator } from "./FuelCalculator";
@@ -41,90 +40,7 @@ export function RouteCalculator({
   const [ethanolPrice, setEthanolPrice] = useState<number>(4.09);
   const [isRoundTrip, setIsRoundTrip] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isLocating, setIsLocating] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const handleGetCurrentLocation = async () => {
-    setIsLocating(true);
-
-    const fallbackIPLocation = async () => {
-      try {
-        const res = await fetch("https://get.geojs.io/v1/ip/geo.json");
-        if (res.ok) {
-          const data = await res.json();
-          const lat = parseFloat(data.latitude);
-          const lng = parseFloat(data.longitude);
-          if (!isNaN(lat) && !isNaN(lng)) {
-            const loc = await reverseGeocode(lat, lng);
-            if (loc) {
-              setOrigin(loc);
-              return true;
-            } else if (data.city) {
-              const fallbackLoc: LocationPoint = {
-                name: `${data.city}${data.region ? ` - ${data.region}` : ""}`,
-                lat,
-                lng,
-                city: data.city,
-                state: data.region,
-              };
-              setOrigin(fallbackLoc);
-              return true;
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Erro fallback IP:", err);
-      }
-      return false;
-    };
-
-    const processCoords = async (latitude: number, longitude: number) => {
-      try {
-        const loc = await reverseGeocode(latitude, longitude);
-        if (loc) {
-          setOrigin(loc);
-          return true;
-        }
-      } catch (err) {
-        console.error("Erro ao obter endereço do local:", err);
-      }
-      return false;
-    };
-
-    if (!navigator.geolocation) {
-      const ok = await fallbackIPLocation();
-      if (!ok) alert("Não foi possível obter sua localização.");
-      setIsLocating(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        const ok = await processCoords(latitude, longitude);
-        if (!ok) await fallbackIPLocation();
-        setIsLocating(false);
-      },
-      (highAccErr) => {
-        console.warn("GPS alta precisão falhou, tentando triangulação:", highAccErr.message);
-        navigator.geolocation.getCurrentPosition(
-          async (pos) => {
-            const { latitude, longitude } = pos.coords;
-            const ok = await processCoords(latitude, longitude);
-            if (!ok) await fallbackIPLocation();
-            setIsLocating(false);
-          },
-          async () => {
-            const ok = await fallbackIPLocation();
-            if (!ok) alert("Não foi possível obter sua localização. Verifique as permissões.");
-            setIsLocating(false);
-          },
-          { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 }
-        );
-      },
-      { enableHighAccuracy: true, timeout: 6000, maximumAge: 15000 }
-    );
-  };
 
   const handleSwapPoints = () => {
     const temp = origin;
@@ -231,37 +147,21 @@ export function RouteCalculator({
             Combustível e pedágios automáticos
           </p>
         </div>
-
-        <button
-          type="button"
-          onClick={handleGetCurrentLocation}
-          disabled={isLocating}
-          className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-md text-[10px] font-bold shadow-sm transition-colors cursor-pointer shrink-0"
-          title="Usar localização atual como ponto de partida"
-        >
-          {isLocating ? (
-            <Loader2 className="w-3 h-3 animate-spin text-white" />
-          ) : (
-            <Navigation className="w-3 h-3 text-white fill-white" />
-          )}
-          <span>SEU LOCAL</span>
-        </button>
       </div>
 
       {/* Conteúdo com Scroll Suave Interno */}
       <div className="flex-1 overflow-y-auto pr-1 space-y-2 scrollbar-thin scrollbar-thumb-slate-200">
         {/* Inputs de Origem e Destino com botão de inverter na lateral */}
         <div className="flex items-stretch gap-1.5 relative">
-          <div className="flex-1 space-y-1">
+          <div className="flex-1 space-y-1.5">
             <AddressAutocomplete
-              label="Origem"
-              placeholder="Ponto de partida..."
+              placeholder="Origem (Ponto de partida)..."
               value={origin}
               onChange={setOrigin}
+              showLocationButtonInside={true}
             />
             <AddressAutocomplete
-              label="Destino"
-              placeholder="Destino final..."
+              placeholder="Destino (Destino final)..."
               value={destination}
               onChange={setDestination}
             />
@@ -270,7 +170,7 @@ export function RouteCalculator({
           <button
             type="button"
             onClick={handleSwapPoints}
-            className="w-8 shrink-0 mt-5 flex items-center justify-center bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-500 hover:text-slate-800 rounded-lg border border-slate-200 shadow-sm transition-all"
+            className="w-8 shrink-0 flex items-center justify-center bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-500 hover:text-slate-800 rounded-lg border border-slate-200 shadow-sm transition-all"
             title="Inverter origem e destino"
           >
             <ArrowUpDown className="w-3.5 h-3.5" />

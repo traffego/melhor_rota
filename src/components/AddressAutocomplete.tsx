@@ -6,11 +6,12 @@ import { LocationPoint } from "@/types";
 import { searchAddress, reverseGeocode } from "@/lib/services/photon";
 
 interface AddressAutocompleteProps {
-  label: string;
+  label?: string;
   placeholder: string;
   value: LocationPoint | null;
   onChange: (loc: LocationPoint | null) => void;
   showCurrentLocationButton?: boolean;
+  showLocationButtonInside?: boolean;
 }
 
 export function AddressAutocomplete({
@@ -19,6 +20,7 @@ export function AddressAutocomplete({
   value,
   onChange,
   showCurrentLocationButton = false,
+  showLocationButtonInside = false,
 }: AddressAutocompleteProps) {
   const [inputValue, setInputValue] = useState(value?.name || "");
   const [suggestions, setSuggestions] = useState<LocationPoint[]>([]);
@@ -201,27 +203,29 @@ export function AddressAutocomplete({
 
   return (
     <div className="relative w-full" ref={containerRef}>
-      <div className="flex items-center justify-between mb-0.5">
-        <label className="block text-[11px] font-semibold text-slate-700">
-          {label}
-        </label>
-        {showCurrentLocationButton && (
-          <button
-            type="button"
-            onClick={handleGetCurrentLocation}
-            disabled={isLocating}
-            className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded transition-colors border border-slate-200/80"
-            title="Usar localização atual"
-          >
-            {isLocating ? (
-              <Loader2 className="w-2.5 h-2.5 animate-spin text-slate-700" />
-            ) : (
-              <Navigation className="w-2.5 h-2.5 text-slate-500" />
-            )}
-            <span>Seu local</span>
-          </button>
-        )}
-      </div>
+      {label && (
+        <div className="flex items-center justify-between mb-0.5">
+          <label className="block text-[11px] font-semibold text-slate-700">
+            {label}
+          </label>
+          {showCurrentLocationButton && (
+            <button
+              type="button"
+              onClick={handleGetCurrentLocation}
+              disabled={isLocating}
+              className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded transition-colors border border-slate-200/80"
+              title="Usar localização atual"
+            >
+              {isLocating ? (
+                <Loader2 className="w-2.5 h-2.5 animate-spin text-slate-700" />
+              ) : (
+                <Navigation className="w-2.5 h-2.5 text-slate-500" />
+              )}
+              <span>Seu local</span>
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="relative flex items-center">
         <div className="absolute left-2.5 text-slate-400 pointer-events-none">
@@ -241,8 +245,27 @@ export function AddressAutocomplete({
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="w-full h-8 pl-7 pr-6 py-1 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 transition-all shadow-sm"
+          className={`w-full h-8 pl-7 ${showLocationButtonInside && !inputValue ? "pr-24" : (inputValue ? "pr-7" : "pr-3")} py-1 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 transition-all shadow-sm`}
         />
+
+        {showLocationButtonInside && !inputValue && (
+          <button
+            type="button"
+            onClick={handleGetCurrentLocation}
+            disabled={isLocating}
+            className="absolute right-1.5 px-2 py-0.5 inline-flex items-center gap-1 text-[10px] font-semibold text-blue-600 hover:text-blue-700 active:text-blue-800 bg-blue-50/90 hover:bg-blue-100 rounded-md transition-colors border border-blue-200/70 shadow-2xs cursor-pointer"
+            title="Usar meu local atual (GPS)"
+          >
+            {isLocating ? (
+              <Loader2 className="w-2.5 h-2.5 animate-spin text-blue-600" />
+            ) : (
+              <svg className="w-2.5 h-2.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+              </svg>
+            )}
+            <span>Meu local</span>
+          </button>
+        )}
 
         {inputValue && (
           <button

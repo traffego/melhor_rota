@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q");
+    const userLat = searchParams.get("lat");
+    const userLng = searchParams.get("lng");
 
     if (!q || q.trim().length < 2) {
       return NextResponse.json({ results: [] });
@@ -26,9 +28,38 @@ export async function GET(request: NextRequest) {
       }
     };
 
-    // 1. HERE Discover API (Busca inteligente de Pontos de Interesse: Paróquias, Escolas, Bares, Shoppings, etc.)
+    const formatAddressItem = (item: any): LocationPoint | null => {
+      if (!item?.position?.lat || !item?.position?.lng) return null;
+
+      const addr = item.address || {};
+      const title = item.title || "";
+      const street = addr.street || "";
+      const houseNumber = addr.houseNumber || "";
+      const streetPart = street ? (houseNumber ? `${street}, ${houseNumber}` : street) : "";
+      const district = addr.district || "";
+      const city = addr.city || addr.county || "";
+      const state = addr.stateCode || addr.state || "";
+
+      const details: string[] = [];
+      if (streetPart && !title.includes(streetPart)) details.push(streetPart);
+      if (district && !title.includes(district)) details.push(district);
+      if (city && !title.includes(city)) details.push(city);
+      if (state && !title.includes(state)) details.push(state);
+
+      const fullName = details.length > 0 ? `${title} - ${details.join(", ")}` : (item.address?.label || title);
+
+      return {
+        name: fullName,
+        lat: item.position.lat,
+        lng: item.position.lng,
+        city,
+        state,
+      };
+    };
+
+    // 1. HERE Discover API com BBox Brasil (Busca de POIs: Paróquias, Escolas, Shoppings, Restaurantes)
     try {
-      const discoverUrl = `https://discover.search.hereapi.com/v1/discover?q=${encoded}&in=countryCode:BRA&lang=pt-BR&limit=8&apiKey=${HERE_API_KEY}`;
+      const discoverUrl = `https://discover.search.hereapi.com/v1/discover?q=${encoded}&in=countryCode:BRA&in=bbox:-73.99,-33.75,-34.79,5.27&lang=pt-BR&limit=8&apiKey=${HERE_API_KEY}`;
       const hereRes = await fetch(discoverUrl, {
         headers: { "Accept": "application/json" },
         next: { revalidate: 3600 },
@@ -37,42 +68,38 @@ export async function GET(request: NextRequest) {
       if (hereRes.ok) {
         const hereData = await hereRes.json();
         const items = hereData.items || [];
-
         for (const item of items) {
-          if (item?.position?.lat && item?.position?.lng) {
-            const addr = item.address || {};
-            const title = item.title || "";
-            const street = addr.street || "";
-            const houseNumber = addr.houseNumber || "";
-            const streetPart = street ? (houseNumber ? `${street}, ${houseNumber}` : street) : "";
-            const district = addr.district || "";
-            const city = addr.city || addr.county || "";
-            const state = addr.stateCode || addr.state || "";
-
-            const details: string[] = [];
-            if (streetPart && streetPart !== title) details.push(streetPart);
-            if (district && district !== streetPart && district !== city) details.push(district);
-            if (city && city !== title) details.push(city);
-            if (state) details.push(state);
-
-            const fullName = details.length > 0 ? `${title} - ${details.join(", ")}` : title;
-
-            addUniqueResult({
-              name: fullName,
-              lat: item.position.lat,
-              lng: item.position.lng,
-              city,
-              state,
-            });
-          }
+          const loc = formatAddressItem(item);
+          if (loc) addUniqueResult(loc);
         }
       }
     } catch (hereErr) {
       console.warn("HERE Discover falhou:", hereErr);
     }
 
-    // 2. Se poucos resultados, consultar HERE Geocode API (Endereços exatos, avenidas, rodovias)
-    if (results.length < 5) {
+    // 2. HERE Autosuggest API (Com viés geográfico do usuário ou centro do Brasil)
+    try {
+      const centerPoint = (userLat && userLng) ? `${userLat},${userLng}` : "-15.78,-47.93";
+      const autoUrl = `https://autosuggest.search.hereapi.com/v1/autosuggest?q=${encoded}&in=countryCode:BRA&at=${centerPoint}&lang=pt-BR&limit=8&apiKey=${HERE_API_KEY}`;
+      const autoRes = await fetch(autoUrl, {
+        headers: { "Accept": "application/json" },
+        next: { revalidate: 3600 },
+      });
+
+      if (autoRes.ok) {
+        const autoData = await autoRes.json();
+        const items = autoData.items || [];
+        for (const item of items) {
+          const loc = formatAddressItem(item);
+          if (loc) addUniqueResult(loc);
+        }
+      }
+    } catch (autoErr) {
+      console.warn("HERE Autosuggest falhou:", autoErr);
+    }
+
+    // 3. HERE Geocode API (Endereços exatos, ruas e numerações)
+    if (results.length < 6) {
       try {
         const geocodeUrl = `https://geocode.search.hereapi.com/v1/geocode?q=${encoded}&in=countryCode:BRA&lang=pt-BR&limit=6&apiKey=${HERE_API_KEY}`;
         const geoRes = await fetch(geocodeUrl, {
@@ -83,34 +110,9 @@ export async function GET(request: NextRequest) {
         if (geoRes.ok) {
           const geoData = await geoRes.json();
           const items = geoData.items || [];
-
           for (const item of items) {
-            if (item?.position?.lat && item?.position?.lng) {
-              const addr = item.address || {};
-              const title = item.title || "";
-              const street = addr.street || "";
-              const houseNumber = addr.houseNumber || "";
-              const streetPart = street ? (houseNumber ? `${street}, ${houseNumber}` : street) : "";
-              const district = addr.district || "";
-              const city = addr.city || addr.county || "";
-              const state = addr.stateCode || addr.state || "";
-
-              const details: string[] = [];
-              if (streetPart && streetPart !== title) details.push(streetPart);
-              if (district && district !== streetPart && district !== city) details.push(district);
-              if (city && city !== title) details.push(city);
-              if (state) details.push(state);
-
-              const fullName = details.length > 0 ? `${title} - ${details.join(", ")}` : title;
-
-              addUniqueResult({
-                name: fullName,
-                lat: item.position.lat,
-                lng: item.position.lng,
-                city,
-                state,
-              });
-            }
+            const loc = formatAddressItem(item);
+            if (loc) addUniqueResult(loc);
           }
         }
       } catch (geoErr) {
@@ -118,8 +120,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 3. Fallback Photon Komoot (OpenStreetMap) se a busca for muito específica ou HERE retornar vazio
-    if (results.length === 0) {
+    // 4. Fallback Photon Komoot (OpenStreetMap)
+    if (results.length < 3) {
       try {
         const photonUrl = `https://photon.komoot.io/api/?q=${encoded}&bbox=-73.99,-33.75,-34.79,5.27&limit=6&lang=default`;
         const photonRes = await fetch(photonUrl, {
@@ -139,6 +141,7 @@ export async function GET(request: NextRequest) {
               const state = p.state || "";
 
               const details: string[] = [];
+              if (p.district) details.push(p.district);
               if (city && city !== title) details.push(city);
               if (state) details.push(state);
 
