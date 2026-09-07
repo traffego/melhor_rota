@@ -35,7 +35,7 @@ export function RouteCalculator({
 }: RouteCalculatorProps) {
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [customConsumption, setCustomConsumption] = useState<number | undefined>(undefined);
-  const [fuelType, setFuelType] = useState<'gasolina' | 'etanol' | 'diesel'>('gasolina');
+  const [fuelType, setFuelType] = useState<'gasolina' | 'etanol' | 'diesel' | 'gnv'>('gasolina');
   const [fuelPrice, setFuelPrice] = useState<number>(6.05);
   const [ethanolPrice, setEthanolPrice] = useState<number>(4.09);
   const [isRoundTrip, setIsRoundTrip] = useState<boolean>(false);
@@ -151,33 +151,32 @@ export function RouteCalculator({
 
       {/* Conteúdo com Scroll Suave Interno */}
       <div className="flex-1 overflow-y-auto pr-1 space-y-2 scrollbar-thin scrollbar-thumb-slate-200">
-        {/* Inputs de Origem e Destino com botão de inverter */}
-        <div className="space-y-1 relative">
-          <AddressAutocomplete
-            label="Origem"
-            placeholder="Ponto de partida..."
-            value={origin}
-            onChange={setOrigin}
-            showCurrentLocationButton={true}
-          />
-
-          <div className="flex justify-center -my-1.5 relative z-10">
-            <button
-              type="button"
-              onClick={handleSwapPoints}
-              className="p-0.5 bg-white hover:bg-slate-50 text-slate-400 hover:text-slate-700 rounded-full border border-slate-200 shadow-sm transition-transform hover:rotate-180"
-              title="Inverter origem e destino"
-            >
-              <ArrowUpDown className="w-2.5 h-2.5" />
-            </button>
+        {/* Inputs de Origem e Destino com botão de inverter na lateral */}
+        <div className="flex items-stretch gap-1.5 relative">
+          <div className="flex-1 space-y-1">
+            <AddressAutocomplete
+              label="Origem"
+              placeholder="Ponto de partida..."
+              value={origin}
+              onChange={setOrigin}
+              showCurrentLocationButton={true}
+            />
+            <AddressAutocomplete
+              label="Destino"
+              placeholder="Destino final..."
+              value={destination}
+              onChange={setDestination}
+            />
           </div>
 
-          <AddressAutocomplete
-            label="Destino"
-            placeholder="Destino final..."
-            value={destination}
-            onChange={setDestination}
-          />
+          <button
+            type="button"
+            onClick={handleSwapPoints}
+            className="w-8 shrink-0 mt-5 flex items-center justify-center bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-500 hover:text-slate-800 rounded-lg border border-slate-200 shadow-sm transition-all"
+            title="Inverter origem e destino"
+          >
+            <ArrowUpDown className="w-3.5 h-3.5" />
+          </button>
         </div>
 
         {/* Seletor de Veículo Inmetro */}

@@ -5,8 +5,8 @@ import { Fuel, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react";
 import { FuelPrice } from "@/types";
 
 interface FuelCalculatorProps {
-  fuelType: 'gasolina' | 'etanol' | 'diesel';
-  onChangeFuelType: (type: 'gasolina' | 'etanol' | 'diesel') => void;
+  fuelType: 'gasolina' | 'etanol' | 'diesel' | 'gnv';
+  onChangeFuelType: (type: 'gasolina' | 'etanol' | 'diesel' | 'gnv') => void;
   fuelPrice: number;
   onChangeFuelPrice: (price: number) => void;
   ethanolPrice: number;
@@ -72,6 +72,7 @@ export function FuelCalculator({
           if (fuelType === "gasolina") onChangeFuelPrice(targetPrice.gasoline_avg);
           if (fuelType === "etanol") onChangeFuelPrice(targetPrice.ethanol_avg);
           if (fuelType === "diesel") onChangeFuelPrice(targetPrice.diesel_avg);
+          if (fuelType === "gnv") onChangeFuelPrice(targetPrice.gnv_avg || 4.68);
           onChangeEthanolPrice(targetPrice.ethanol_avg);
         }
       } catch (err) {
@@ -88,17 +89,19 @@ export function FuelCalculator({
       if (fuelType === "gasolina") onChangeFuelPrice(found.gasoline_avg);
       if (fuelType === "etanol") onChangeFuelPrice(found.ethanol_avg);
       if (fuelType === "diesel") onChangeFuelPrice(found.diesel_avg);
+      if (fuelType === "gnv") onChangeFuelPrice(found.gnv_avg || 4.68);
       onChangeEthanolPrice(found.ethanol_avg);
     }
   };
 
-  const handleTypeChange = (type: 'gasolina' | 'etanol' | 'diesel') => {
+  const handleTypeChange = (type: 'gasolina' | 'etanol' | 'diesel' | 'gnv') => {
     onChangeFuelType(type);
     const found = fuelPrices.find((p) => p.state_uf === selectedUf) || fuelPrices[0];
     if (found) {
       if (type === "gasolina") onChangeFuelPrice(found.gasoline_avg);
       if (type === "etanol") onChangeFuelPrice(found.ethanol_avg);
       if (type === "diesel") onChangeFuelPrice(found.diesel_avg);
+      if (type === "gnv") onChangeFuelPrice(found.gnv_avg || 4.68);
     }
   };
 
@@ -131,15 +134,15 @@ export function FuelCalculator({
       </div>
 
       {/* Seletor Tipo de Combustível */}
-      <div className="grid grid-cols-3 gap-1.5 p-0.5 bg-slate-200/60 rounded-lg border border-slate-200/80">
-        {(['gasolina', 'etanol', 'diesel'] as const).map((type) => {
+      <div className="grid grid-cols-4 gap-1 p-0.5 bg-slate-200/60 rounded-lg border border-slate-200/80">
+        {(['gasolina', 'etanol', 'diesel', 'gnv'] as const).map((type) => {
           const isActive = fuelType === type;
           return (
             <button
               key={type}
               type="button"
               onClick={() => handleTypeChange(type)}
-              className={`py-1.5 px-2 rounded-md text-xs font-semibold capitalize transition-all ${
+              className={`py-1.5 px-1 rounded-md text-[11px] font-semibold uppercase transition-all ${
                 isActive
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-600 hover:text-slate-900"
@@ -151,10 +154,10 @@ export function FuelCalculator({
         })}
       </div>
 
-      {/* Input de Preço por Litro Customizável */}
+      {/* Input de Preço por Litro/m³ Customizável */}
       <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200">
         <span className="text-xs text-slate-600">
-          Preço do litro ({fuelType}):
+          Preço por {fuelType === "gnv" ? "m³" : "litro"} ({fuelType.toUpperCase()}):
         </span>
         <div className="flex items-center gap-1">
           <span className="text-xs font-medium text-slate-400">R$</span>

@@ -21,6 +21,7 @@ export interface FuelPrice {
   gasoline_avg: number;
   ethanol_avg: number;
   diesel_avg: number;
+  gnv_avg?: number;
   updated_at?: string;
 }
 
@@ -67,7 +68,7 @@ export interface RouteResult {
   litersNeeded: number;
   totalCost: number;
   isRoundTrip: boolean;
-  fuelType: 'gasolina' | 'etanol' | 'diesel';
+  fuelType: 'gasolina' | 'etanol' | 'diesel' | 'gnv';
   fuelPricePerLiter: number;
   consumptionKmPerLiter: number;
   ethanolComparison?: {
@@ -84,7 +85,7 @@ export interface RouteCalculationParams {
   destination: LocationPoint;
   vehicle: Vehicle | null;
   customConsumption?: number;
-  fuelType: 'gasolina' | 'etanol' | 'diesel';
+  fuelType: 'gasolina' | 'etanol' | 'diesel' | 'gnv';
   customFuelPrice?: number;
   isRoundTrip: boolean;
 }

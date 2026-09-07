@@ -253,7 +253,7 @@ export function computeTripCosts(params: {
   totalTollCost: number;
   vehicle: Vehicle | null;
   customConsumption?: number;
-  fuelType: 'gasolina' | 'etanol' | 'diesel';
+  fuelType: 'gasolina' | 'etanol' | 'diesel' | 'gnv';
   fuelPricePerLiter: number;
   isRoundTrip: boolean;
   ethanolPrice?: number;
@@ -290,7 +290,13 @@ export function computeTripCosts(params: {
       consumptionKmPerLiter = vehicle.consumption_highway_ethanol || vehicle.consumption_city_ethanol || 8.5;
     } else if (fuelType === "diesel") {
       consumptionKmPerLiter = vehicle.consumption_highway_diesel || vehicle.consumption_city_diesel || 10.5;
+    } else if (fuelType === "gnv") {
+      // Rendimento padrão do GNV: aproximadamente 1.25x da gasolina em km/m³ ou média 14.0 km/m³
+      const gasHighway = vehicle.consumption_highway_gasoline || vehicle.consumption_city_gasoline;
+      consumptionKmPerLiter = gasHighway ? gasHighway * 1.25 : 14.0;
     }
+  } else if (fuelType === "gnv") {
+    consumptionKmPerLiter = 14.0;
   }
 
   const litersNeeded = distanceKm / Math.max(consumptionKmPerLiter, 0.1);

@@ -8,7 +8,7 @@ interface RouteRequestBody {
   destination: LocationPoint;
   vehicle: Vehicle | null;
   customConsumption?: number;
-  fuelType: 'gasolina' | 'etanol' | 'diesel';
+  fuelType: 'gasolina' | 'etanol' | 'diesel' | 'gnv';
   fuelPricePerLiter: number;
   isRoundTrip: boolean;
   ethanolPrice?: number;

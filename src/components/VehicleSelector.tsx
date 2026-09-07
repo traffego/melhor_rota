@@ -10,7 +10,7 @@ interface VehicleSelectorProps {
   onSelectVehicle: (v: Vehicle | null) => void;
   customConsumption: number | undefined;
   onChangeCustomConsumption: (val: number | undefined) => void;
-  fuelType: 'gasolina' | 'etanol' | 'diesel';
+  fuelType: 'gasolina' | 'etanol' | 'diesel' | 'gnv';
 }
 
 export function VehicleSelector({
@@ -117,7 +117,7 @@ export function VehicleSelector({
   };
 
   const getSelectedVehicleConsumption = () => {
-    if (!selectedVehicle) return 12.0;
+    if (!selectedVehicle) return fuelType === "gnv" ? 14.0 : 12.0;
     if (fuelType === "gasolina") {
       return selectedVehicle.consumption_highway_gasoline || selectedVehicle.consumption_city_gasoline || 12.0;
     }
@@ -126,6 +126,10 @@ export function VehicleSelector({
     }
     if (fuelType === "diesel") {
       return selectedVehicle.consumption_highway_diesel || selectedVehicle.consumption_city_diesel || 10.5;
+    }
+    if (fuelType === "gnv") {
+      const gasHighway = selectedVehicle.consumption_highway_gasoline || selectedVehicle.consumption_city_gasoline;
+      return gasHighway ? gasHighway * 1.25 : 14.0;
     }
     return 12.0;
   };
@@ -275,14 +279,14 @@ export function VehicleSelector({
               type="text"
               value={manualValue}
               onChange={handleManualValueChange}
-              placeholder="ex: 13.5"
+              placeholder={fuelType === "gnv" ? "ex: 14.0" : "ex: 13.5"}
               className="w-14 px-1 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-bold text-slate-900 text-right focus:outline-none focus:ring-1 focus:ring-slate-400"
             />
-            <span className="text-[10px] text-slate-500">km/l</span>
+            <span className="text-[10px] text-slate-500">{fuelType === "gnv" ? "km/m³" : "km/l"}</span>
           </div>
         ) : (
           <span className="text-[10px] font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
-            {getSelectedVehicleConsumption().toFixed(1).replace(".", ",")} km/l (Estrada)
+            {getSelectedVehicleConsumption().toFixed(1).replace(".", ",")} {fuelType === "gnv" ? "km/m³" : "km/l"} (Estrada)
           </span>
         )}
       </div>

@@ -392,7 +392,7 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900">{f.state_name} ({f.state_uf})</span>
                 </div>
-                <div className="grid grid-cols-3 gap-1.5 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs">
                   <div className="bg-white p-2 rounded-xl border border-slate-200 text-center">
                     <span className="text-[10px] text-slate-500 block">Gasolina</span>
                     <strong className="text-emerald-700">R$ {f.gasoline_avg.toFixed(2)}</strong>
@@ -404,6 +404,10 @@ export default function AdminDashboardPage() {
                   <div className="bg-white p-2 rounded-xl border border-slate-200 text-center">
                     <span className="text-[10px] text-slate-500 block">Diesel</span>
                     <strong className="text-blue-700">R$ {f.diesel_avg.toFixed(2)}</strong>
+                  </div>
+                  <div className="bg-white p-2 rounded-xl border border-slate-200 text-center">
+                    <span className="text-[10px] text-slate-500 block">GNV (m³)</span>
+                    <strong className="text-purple-700">R$ {(f.gnv_avg || 4.68).toFixed(2)}</strong>
                   </div>
                 </div>
               </div>

@@ -26,6 +26,9 @@ interface RouteSummaryProps {
 export function RouteSummary({ result, isRoundTrip, onToggleRoundTrip }: RouteSummaryProps) {
   const [copied, setCopied] = useState(false);
 
+  const unit = result.fuelType === "gnv" ? "m³" : "L";
+  const consumptionUnit = result.fuelType === "gnv" ? "km/m³" : "km/l";
+
   const handleCopy = () => {
     const text = `🚗 *Melhor Rota - Resumo da Viagem*
 📍 *Origem:* ${result.origin.name}
@@ -33,7 +36,7 @@ export function RouteSummary({ result, isRoundTrip, onToggleRoundTrip }: RouteSu
 📏 *Distância:* ${formatDistance(result.distanceKm)} (${isRoundTrip ? "Ida e Volta" : "Apenas Ida"})
 ⏱️ *Tempo Estimado:* ${formatDuration(result.durationMinutes)}
 
-⛽ *Combustível:* ${result.litersNeeded.toFixed(1)} L (${result.fuelType}) = ${formatCurrency(result.fuelCost)}
+⛽ *Combustível:* ${result.litersNeeded.toFixed(1)} ${unit} (${result.fuelType.toUpperCase()}) = ${formatCurrency(result.fuelCost)}
 🛣️ *Pedágios:* ${formatCurrency(result.totalTollCost)} (${result.tolls.length} praças)
 💰 *CUSTO TOTAL:* ${formatCurrency(result.totalCost)}
 
@@ -51,7 +54,7 @@ Calculado em Melhor Rota.`;
 📏 *Distância:* ${formatDistance(result.distanceKm)} (${isRoundTrip ? "Ida e Volta" : "Apenas Ida"})
 ⏱️ *Tempo Estimado:* ${formatDuration(result.durationMinutes)}
 
-⛽ *Combustível:* ${result.litersNeeded.toFixed(1)} L = ${formatCurrency(result.fuelCost)}
+⛽ *Combustível:* ${result.litersNeeded.toFixed(1)} ${unit} = ${formatCurrency(result.fuelCost)}
 🛣️ *Pedágios:* ${formatCurrency(result.totalTollCost)}
 💰 *CUSTO TOTAL:* ${formatCurrency(result.totalCost)}`;
 
@@ -113,7 +116,7 @@ Calculado em Melhor Rota.`;
             </div>
             <p className="text-sm font-bold text-white">{formatCurrency(result.fuelCost)}</p>
             <p className="text-[10px] text-slate-400 mt-0.5">
-              {result.litersNeeded.toFixed(1)} L ({result.consumptionKmPerLiter.toFixed(1)} km/l)
+              {result.litersNeeded.toFixed(1)} {unit} ({result.consumptionKmPerLiter.toFixed(1)} {consumptionUnit})
             </p>
           </div>
 
