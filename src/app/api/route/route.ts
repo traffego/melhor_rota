@@ -23,6 +23,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Origem e destino válidos são obrigatórios." }, { status: 400 });
     }
 
+    if (!vehicle && !customConsumption) {
+      return NextResponse.json({ error: "É obrigatório selecionar um veículo para calcular a rota." }, { status: 400 });
+    }
+
     const hereApiKey = process.env.HERE_API_KEY;
     let routeData: {
       distanceKm: number;

@@ -54,6 +54,11 @@ export function RouteCalculator({
       return;
     }
 
+    if (!vehicle && !customConsumption) {
+      setErrorMessage("Por favor, selecione o modelo do seu veículo antes de calcular.");
+      return;
+    }
+
     setIsLoading(true);
     setErrorMessage(null);
 
@@ -207,7 +212,7 @@ export function RouteCalculator({
         <button
           type="button"
           onClick={handleCalculateRoute}
-          disabled={isLoading || !origin || !destination}
+          disabled={isLoading || !origin || !destination || (!vehicle && !customConsumption)}
           className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs sm:text-sm rounded-xl shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98]"
         >
           {isLoading ? (
