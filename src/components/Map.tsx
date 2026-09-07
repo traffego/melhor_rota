@@ -1,16 +1,42 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { LocationPoint, RouteResult, TollGate } from "@/types";
 import { formatCurrency } from "@/lib/utils";
+import { Layers } from "lucide-react";
 
 interface MapProps {
   origin: LocationPoint | null;
   destination: LocationPoint | null;
   routeResult: RouteResult | null;
 }
+
+export type MapStyle = "mono" | "standard" | "satellite" | "dark";
+
+const TILE_LAYERS: Record<MapStyle, { url: string; attribution: string; maxZoom: number }> = {
+  mono: {
+    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    maxZoom: 20,
+  },
+  standard: {
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  },
+  satellite: {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+    maxZoom: 19,
+  },
+  dark: {
+    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    maxZoom: 20,
+  },
+};
 
 // Ícones SVG personalizados para Leaflet
 const createCustomIcon = (color: string, iconHtml: string) => {
@@ -58,8 +84,10 @@ const tollIcon = createCustomIcon(
 export default function Map({ origin, destination, routeResult }: MapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const polylineLayerRef = useRef<L.Polyline | null>(null);
+  const [mapStyle, setMapStyle] = useState<MapStyle>("mono");
 
   // Inicializar o Mapa Leaflet
   useEffect(() => {
@@ -74,11 +102,14 @@ export default function Map({ origin, destination, routeResult }: MapProps) {
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
-    // Adicionar camada OpenStreetMap Tiles
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19,
+    // Camada padrão Preto e Branco (Positron)
+    const initialConfig = TILE_LAYERS.mono;
+    const tileLayer = L.tileLayer(initialConfig.url, {
+      attribution: initialConfig.attribution,
+      maxZoom: initialConfig.maxZoom,
     }).addTo(map);
+
+    tileLayerRef.current = tileLayer;
 
     const markersGroup = L.layerGroup().addTo(map);
     markersLayerRef.current = markersGroup;
@@ -98,6 +129,24 @@ export default function Map({ origin, destination, routeResult }: MapProps) {
       mapInstanceRef.current = null;
     };
   }, []);
+
+  // Trocar camada de tiles dinamicamente
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (tileLayerRef.current) {
+      map.removeLayer(tileLayerRef.current);
+    }
+
+    const config = TILE_LAYERS[mapStyle];
+    const newTileLayer = L.tileLayer(config.url, {
+      attribution: config.attribution,
+      maxZoom: config.maxZoom,
+    }).addTo(map);
+
+    tileLayerRef.current = newTileLayer;
+  }, [mapStyle]);
 
   // Atualizar marcadores e rota no mapa
   useEffect(() => {
@@ -178,6 +227,61 @@ export default function Map({ origin, destination, routeResult }: MapProps) {
 
   return (
     <div className="relative w-full h-full min-h-[400px] md:min-h-[500px] lg:min-h-full rounded-2xl overflow-hidden shadow-inner border border-slate-200">
+      {/* Seletor Flutuante de Estilos de Visualização */}
+      <div className="absolute top-3 right-3 z-[1000] bg-white/95 backdrop-blur-md p-1 rounded-xl shadow-md border border-slate-200/80 flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setMapStyle("mono")}
+          className={`px-2.5 py-1 rounded-lg font-bold text-[10px] transition-all flex items-center gap-1 ${
+            mapStyle === "mono"
+              ? "bg-slate-900 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          }`}
+          title="Mapa Monocromático Clean (Preto e Branco)"
+        >
+          <span>P&B</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMapStyle("standard")}
+          className={`px-2.5 py-1 rounded-lg font-bold text-[10px] transition-all flex items-center gap-1 ${
+            mapStyle === "standard"
+              ? "bg-slate-900 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          }`}
+          title="Mapa com Cores e Ruas Padrão"
+        >
+          <span>Colorido</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMapStyle("satellite")}
+          className={`px-2.5 py-1 rounded-lg font-bold text-[10px] transition-all flex items-center gap-1 ${
+            mapStyle === "satellite"
+              ? "bg-slate-900 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          }`}
+          title="Imagens Reais de Satélite"
+        >
+          <span>Satélite</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMapStyle("dark")}
+          className={`px-2.5 py-1 rounded-lg font-bold text-[10px] transition-all flex items-center gap-1 ${
+            mapStyle === "dark"
+              ? "bg-slate-900 text-white shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          }`}
+          title="Modo Noturno / Dark"
+        >
+          <span>Noturno</span>
+        </button>
+      </div>
+
       <div ref={mapContainerRef} className="w-full h-full" />
     </div>
   );
