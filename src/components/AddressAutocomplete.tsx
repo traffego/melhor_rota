@@ -175,10 +175,10 @@ export function AddressAutocomplete({
             }
             setIsLocating(false);
           },
-          { enableHighAccuracy: false, timeout: 6000, maximumAge: 30000 }
+          { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 }
         );
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 6000, maximumAge: 15000 }
     );
   };
 

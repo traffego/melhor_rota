@@ -165,6 +165,28 @@ export async function searchAddress(query: string): Promise<LocationPoint[]> {
 
 export async function reverseGeocode(lat: number, lng: number): Promise<LocationPoint | null> {
   try {
+    // 1. Tentar API interna de alta velocidade (HERE Maps / Edge)
+    if (typeof window !== "undefined") {
+      try {
+        const apiRes = await fetch(`/api/reverse-geocode?lat=${lat}&lng=${lng}`);
+        if (apiRes.ok) {
+          const apiData = await apiRes.json();
+          if (apiData?.name) {
+            return {
+              name: apiData.name,
+              lat: apiData.lat || lat,
+              lng: apiData.lng || lng,
+              city: apiData.city,
+              state: apiData.state,
+            };
+          }
+        }
+      } catch (apiErr) {
+        console.warn("API reverse-geocode falhou, tentando direto:", apiErr);
+      }
+    }
+
+    // 2. Fallback direto Nominatim
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
     const response = await fetch(url, {
       headers: { "User-Agent": "MelhorRotaApp/1.0" },
