@@ -15,11 +15,12 @@ interface MapProps {
 
 export type MapStyle = "mono" | "standard" | "satellite" | "dark";
 
-const TILE_LAYERS: Record<MapStyle, { url: string; attribution: string; maxZoom: number }> = {
+const TILE_LAYERS: Record<MapStyle, { url: string; attribution: string; maxZoom: number; className?: string }> = {
   mono: {
-    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    maxZoom: 20,
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+    className: "map-tiles-mono",
   },
   standard: {
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -32,9 +33,10 @@ const TILE_LAYERS: Record<MapStyle, { url: string; attribution: string; maxZoom:
     maxZoom: 19,
   },
   dark: {
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    maxZoom: 20,
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+    className: "map-tiles-dark",
   },
 };
 
@@ -102,11 +104,12 @@ export default function Map({ origin, destination, routeResult }: MapProps) {
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
-    // Camada padrão Preto e Branco (Positron)
+    // Camada padrão Preto e Branco (OpenStreetMap filtrado)
     const initialConfig = TILE_LAYERS.mono;
     const tileLayer = L.tileLayer(initialConfig.url, {
       attribution: initialConfig.attribution,
       maxZoom: initialConfig.maxZoom,
+      className: initialConfig.className || "",
     }).addTo(map);
 
     tileLayerRef.current = tileLayer;
@@ -143,6 +146,7 @@ export default function Map({ origin, destination, routeResult }: MapProps) {
     const newTileLayer = L.tileLayer(config.url, {
       attribution: config.attribution,
       maxZoom: config.maxZoom,
+      className: config.className || "",
     }).addTo(map);
 
     tileLayerRef.current = newTileLayer;
