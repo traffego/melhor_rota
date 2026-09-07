@@ -12,7 +12,8 @@ import {
   Copy, 
   Check, 
   DollarSign,
-  Info
+  Info,
+  Navigation
 } from "lucide-react";
 import { RouteResult } from "@/types";
 import { formatCurrency, formatDistance, formatDuration } from "@/lib/utils";
@@ -29,6 +30,9 @@ export function RouteSummary({ result, isRoundTrip, onToggleRoundTrip }: RouteSu
   const unit = result.fuelType === "gnv" ? "m³" : "L";
   const consumptionUnit = result.fuelType === "gnv" ? "km/m³" : "km/l";
 
+  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(`${result.origin.lat},${result.origin.lng}`)}&destination=${encodeURIComponent(`${result.destination.lat},${result.destination.lng}`)}&travelmode=driving`;
+  const wazeUrl = `https://waze.com/ul?ll=${result.destination.lat},${result.destination.lng}&navigate=yes`;
+
   const handleCopy = () => {
     const text = `🚗 *Melhor Rota - Resumo da Viagem*
 📍 *Origem:* ${result.origin.name}
@@ -39,6 +43,9 @@ export function RouteSummary({ result, isRoundTrip, onToggleRoundTrip }: RouteSu
 ⛽ *Combustível:* ${result.litersNeeded.toFixed(1)} ${unit} (${result.fuelType.toUpperCase()}) = ${formatCurrency(result.fuelCost)}
 🛣️ *Pedágios:* ${formatCurrency(result.totalTollCost)} (${result.tolls.length} praças)
 💰 *CUSTO TOTAL:* ${formatCurrency(result.totalCost)}
+
+🗺️ *Google Maps:* ${googleMapsUrl}
+🚙 *Waze:* ${wazeUrl}
 
 Calculado em Melhor Rota.`;
 
@@ -56,7 +63,10 @@ Calculado em Melhor Rota.`;
 
 ⛽ *Combustível:* ${result.litersNeeded.toFixed(1)} ${unit} = ${formatCurrency(result.fuelCost)}
 🛣️ *Pedágios:* ${formatCurrency(result.totalTollCost)}
-💰 *CUSTO TOTAL:* ${formatCurrency(result.totalCost)}`;
+💰 *CUSTO TOTAL:* ${formatCurrency(result.totalCost)}
+
+🗺️ *Google Maps:* ${googleMapsUrl}
+🚙 *Waze:* ${wazeUrl}`;
 
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank");
   };
@@ -172,6 +182,34 @@ Calculado em Melhor Rota.`;
           </div>
         </div>
       )}
+
+      {/* Botões de Navegação GPS */}
+      <div className="space-y-1.5 pt-1">
+        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+          Navegar no Celular / GPS
+        </span>
+        <div className="grid grid-cols-2 gap-2">
+          <a
+            href={googleMapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-blue-50 text-slate-800 hover:text-blue-700 rounded-xl text-xs font-bold transition-all border border-slate-200 hover:border-blue-300 shadow-sm"
+          >
+            <Navigation className="w-3.5 h-3.5 text-blue-600" />
+            <span>Google Maps</span>
+          </a>
+
+          <a
+            href={wazeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-cyan-50 text-slate-800 hover:text-cyan-700 rounded-xl text-xs font-bold transition-all border border-slate-200 hover:border-cyan-300 shadow-sm"
+          >
+            <Navigation className="w-3.5 h-3.5 text-cyan-500" />
+            <span>Waze</span>
+          </a>
+        </div>
+      </div>
 
       {/* Botões de Ação e Compartilhamento */}
       <div className="grid grid-cols-2 gap-2">
